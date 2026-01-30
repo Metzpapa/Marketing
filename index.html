@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balanced Eye Point Cloud</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: white; 
+            font-family: sans-serif;
+        }
+        canvas { display: block; }
+
+        #captureBtn {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid #6F9ABF;
+            color: #6F9ABF;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+        #captureBtn:hover {
+            background: #6F9ABF;
+            color: white;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+<button id="captureBtn">Capture Frame</button>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // 1. SETUP
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xffffff, 0.02);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 14; 
+    camera.position.y = 0;
+
+    const renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        alpha: true,               
+        preserveDrawingBuffer: true 
+    });
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.autoRotate = false; 
+
+    // ==========================================
+    // GENERATION LOGIC
+    // ==========================================
+    
+    const vertices = [];
+    
+    function randomPointOnSphere(radius) {
+        const u = Math.random();
+        const v = Math.random();
+        const theta = 2 * Math.PI * u;
+        const phi = Math.acos(2 * v - 1);
+        const x = radius * Math.sin(phi) * Math.cos(theta);
+        const y = radius * Math.sin(phi) * Math.sin(theta);
+        const z = radius * Math.cos(phi);
+        return { x, y, z };
+    }
+
+    // --- LAYER 1: THE CLOUD ---
+    const cloudCount = 100000; 
+    const maxCloudRadius = 10.0; 
+    const minCloudRadius = 4.0; // Keeps the "Cutout" area clean
+
+    for (let i = 0; i < cloudCount; i++) {
+        const u = Math.random();
+        const v = Math.random();
+        const theta = 2 * Math.PI * u;
+        const phi = Math.acos(2 * v - 1);
+        
+        const distanceNormal = Math.random(); 
+        const r = minCloudRadius + (maxCloudRadius - minCloudRadius) * Math.pow(distanceNormal, 1.8); 
+
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta);
+        const z = r * Math.cos(phi);
+        vertices.push(x, y, z);
+    }
+
+    // --- LAYER 2: THE EYE STRUCTURE ---
+    const eyeballCount = 20000; 
+    const eyeRadius = 4.0;
+    for (let i = 0; i < eyeballCount; i++) {
+        let p = randomPointOnSphere(eyeRadius);
+        
+        // Soft edge for the sclera hole
+        const cutoffNoise = (Math.random() * 0.2) - 0.1;
+        if (p.z > 3.2 + cutoffNoise) continue; 
+        
+        vertices.push(p.x, p.y, p.z);
+    }
+
+    // FIX: BALANCED IRIS DENSITY
+    // 1. Count: 10,000 (Middle ground between 6k and 20k)
+    // 2. Math: Back to Math.sqrt() for uniform distribution (no clustering)
+    const irisCount = 10000; 
+    const irisRadius = 2.3;  
+    const pupilRadius = 0.8;
+    
+    for (let i = 0; i < irisCount; i++) {
+        // Using Math.sqrt ensures points are spread evenly over the surface area.
+        // This avoids the "solid center" look and keeps it looking like a cloud.
+        const r = Math.sqrt(Math.random()) * irisRadius;
+        const theta = Math.random() * 2 * Math.PI;
+        
+        // The Pupil Hole
+        if (r < pupilRadius) continue; 
+
+        const x = r * Math.cos(theta);
+        const y = r * Math.sin(theta);
+        
+        // The "Cutout" Depth Logic
+        // This pushes the iris back into the eye, creating the 3D layering you like.
+        const z = 3.5 - (r * 0.2); 
+        
+        vertices.push(x, y, z);
+    }
+
+    const lidCount = 15000;
+    const lidRadius = 4.3;
+    for (let i = 0; i < lidCount; i++) {
+        let p = randomPointOnSphere(lidRadius);
+        const openingHeight = 1.8 * (1 - Math.abs(p.x / lidRadius)); 
+        if (p.z > 0 && Math.abs(p.y) < openingHeight) continue;
+        vertices.push(p.x, p.y, p.z);
+    }
+
+    // ==========================================
+    // RENDER SETTINGS
+    // ==========================================
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+    const material = new THREE.PointsMaterial({
+        color: 0x6F9ABF, 
+        size: 0.035, 
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.8, 
+        depthWrite: false
+    });
+
+    const pointCloud = new THREE.Points(geometry, material);
+    scene.add(pointCloud);
+
+    // ==========================================
+    // CAPTURE FUNCTIONALITY
+    // ==========================================
+
+    const btn = document.getElementById('captureBtn');
+    
+    btn.addEventListener('click', () => {
+        renderer.render(scene, camera);
+        const strMime = "image/png";
+        const imgData = renderer.domElement.toDataURL(strMime);
+
+        const link = document.createElement('a');
+        const filename = 'point-cloud-eye-balanced.png';
+        
+        link.download = filename;
+        link.href = imgData;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // ==========================================
+    // ANIMATION LOOP
+    // ==========================================
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RapidEye Pipeline - High Clarity</title>
+    <style>
+        :root {
+            /* Backgrounds */
+            --bg: #f1f5f9;       /* Slate 100 - slightly darker for contrast */
+            --card-bg: #ffffff;
+            
+            /* Borders & Text (High Clarity) */
+            --border: #cbd5e1;   /* Slate 300 - sharper borders */
+            --text-header: #0f172a; /* Slate 900 - almost black */
+            --text-sub: #64748b;    /* Slate 500 */
+            
+            /* Status Colors */
+            --danger: #dc2626;      /* Red 600 */
+            --success: #16a34a;     /* Green 600 */
+            --primary: #2563eb;     /* Blue 600 */
+            
+            /* Room Accents (Saturated for Clarity) */
+            --acc-living: #0891b2;   /* Cyan 600 */
+            --acc-kitchen: #7c3aed;  /* Violet 600 */
+            --acc-bed: #d97706;      /* Amber 600 */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+            color: var(--text-header);
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            cursor: default;
+        }
+
+        /* Particle Canvas */
+        #particle-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; pointer-events: none;
+        }
+
+        .pipeline-container {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            height: 100%;
+            padding: 0 5vw;
+            box-sizing: border-box;
+        }
+
+        /* --- COLUMNS --- */
+        .stage-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            flex: 1;
+        }
+
+        .stage-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-sub);
+            margin-bottom: 24px;
+        }
+
+        /* --- SHARED CARD STYLES --- */
+        .app-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px; /* Slightly sharper corners */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+        }
+
+        /* --- 1. INGEST (Fixed) --- */
+        .ingest-card {
+            width: 220px;
+            padding: 20px;
+            gap: 15px;
+        }
+
+        .ingest-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+        .ingest-title { font-size: 0.85rem; font-weight: 600; }
+        .ingest-badge { 
+            font-size: 0.65rem; background: #eff6ff; color: var(--primary); 
+            padding: 2px 6px; border-radius: 4px; font-weight: 600;
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .file-item {
+            height: 60px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        /* Little image icon inside file */
+        .file-icon {
+            width: 24px; height: 18px;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+
+        /* --- ARROWS --- */
+        .arrow-connector {
+            color: #94a3b8; /* Darker arrow */
+            font-size: 1.8rem;
+            margin: 0 15px;
+        }
+
+        /* --- 2. ORGANIZE --- */
+        .organize-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .room-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            width: 260px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .room-bar {
+            width: 4px;
+            height: 32px;
+            border-radius: 2px;
+        }
+
+        .stack-visual {
+            position: relative;
+            width: 32px; height: 26px;
+        }
+        .sv-photo {
+            position: absolute;
+            width: 100%; height: 100%;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 3px;
+        }
+        .sv-photo:nth-child(1) { top: -4px; left: 4px; z-index: 1; }
+        .sv-photo:nth-child(2) { top: 0; left: 0; z-index: 2; background: #e2e8f0; }
+
+        .room-info { display: flex; flex-direction: column; }
+        .room-name { font-size: 0.9rem; font-weight: 600; color: var(--text-header); }
+        .room-meta { font-size: 0.75rem; color: var(--text-sub); }
+
+        /* --- 3. VLM (Cleaned Up) --- */
+        .vlm-card {
+            width: 260px;
+            height: 220px;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .neural-svg { width: 100%; height: 100%; }
+        
+        /* High Contrast Neural Net */
+        .node { fill: #fff; stroke: #64748b; stroke-width: 2; }
+        .node.active { stroke: var(--primary); fill: #fff; stroke-width: 2.5; }
+        .connection { stroke: #cbd5e1; stroke-width: 1.5; }
+
+        /* --- 4. REPORT --- */
+        .report-card {
+            width: 340px;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .report-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+        }
+
+        .rh-title { font-size: 0.95rem; font-weight: 700; color: var(--text-header); }
+        .rh-id { font-size: 0.75rem; color: var(--text-sub); margin-top: 4px; }
+        
+        .rh-badge {
+            background: #fef2f2;
+            color: var(--danger);
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            border: 1px solid #fee2e2;
+        }
+
+        .report-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #f8fafc;
+        }
+
+        .finding-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .fr-left { display: flex; align-items: center; gap: 12px; }
+        .fr-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .fr-text { font-size: 0.85rem; font-weight: 600; color: var(--text-header); }
+        
+        .fr-status { 
+            font-size: 0.75rem; 
+            font-weight: 700; 
+            text-transform: uppercase;
+        }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="pipeline-container">
+        
+        <!-- 1. INGEST -->
+        <div class="stage-column">
+            <div class="stage-label">Ingest</div>
+            <div class="app-card ingest-card">
+                <div class="ingest-header">
+                    <span class="ingest-title">Raw Feed</span>
+                    <span class="ingest-badge">SYNCING</span>
+                </div>
+                <div class="file-grid">
+                    <div class="file-item"><div class="file-icon"></div></div>
+                    <div class="file-item"><div class="file-icon"></div></div>
+                    <div class="file-item"><div class="file-icon"></div></div>
+                    <div class="file-item"><div class="file-icon"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow-connector">→</div>
+
+        <!-- 2. ORGANIZE -->
+        <div class="stage-column">
+            <div class="stage-label">Organize</div>
+            <div class="organize-container">
+                
+                <!-- Living Room -->
+                <div class="room-row">
+                    <div class="room-bar" style="background: var(--acc-living)"></div>
+                    <div class="stack-visual">
+                        <div class="sv-photo"></div><div class="sv-photo"></div>
+                    </div>
+                    <div class="room-info">
+                        <span class="room-name">Living Room</span>
+                        <span class="room-meta">Comparing 12 dates</span>
+                    </div>
+                </div>
+
+                <!-- Kitchen -->
+                <div class="room-row">
+                    <div class="room-bar" style="background: var(--acc-kitchen)"></div>
+                    <div class="stack-visual">
+                        <div class="sv-photo"></div><div class="sv-photo"></div>
+                    </div>
+                    <div class="room-info">
+                        <span class="room-name">Kitchen</span>
+                        <span class="room-meta">Comparing 12 dates</span>
+                    </div>
+                </div>
+
+                <!-- Bedroom -->
+                <div class="room-row">
+                    <div class="room-bar" style="background: var(--acc-bed)"></div>
+                    <div class="stack-visual">
+                        <div class="sv-photo"></div><div class="sv-photo"></div>
+                    </div>
+                    <div class="room-info">
+                        <span class="room-name">Master Bed</span>
+                        <span class="room-meta">Comparing 12 dates</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="arrow-connector">→</div>
+
+        <!-- 3. VLM -->
+        <div class="stage-column">
+            <div class="stage-label">VLM Analysis</div>
+            <div class="app-card vlm-card">
+                <svg class="neural-svg" viewBox="0 0 260 220">
+                    <!-- Connections -->
+                    <line x1="50" y1="50" x2="130" y2="70" class="connection" />
+                    <line x1="50" y1="50" x2="130" y2="110" class="connection" />
+                    <line x1="50" y1="90" x2="130" y2="70" class="connection" />
+                    <line x1="50" y1="90" x2="130" y2="110" class="connection" />
+                    <line x1="50" y1="90" x2="130" y2="150" class="connection" />
+                    <line x1="50" y1="130" x2="130" y2="110" class="connection" />
+                    <line x1="50" y1="130" x2="130" y2="150" class="connection" />
+                    <line x1="50" y1="170" x2="130" y2="150" class="connection" />
+                    
+                    <line x1="130" y1="70" x2="210" y2="90" class="connection" />
+                    <line x1="130" y1="110" x2="210" y2="90" class="connection" />
+                    <line x1="130" y1="110" x2="210" y2="130" class="connection" />
+                    <line x1="130" y1="150" x2="210" y2="130" class="connection" />
+
+                    <!-- Nodes -->
+                    <circle cx="50" cy="50" r="6" class="node" />
+                    <circle cx="50" cy="90" r="6" class="node" />
+                    <circle cx="50" cy="130" r="6" class="node" />
+                    <circle cx="50" cy="170" r="6" class="node" />
+
+                    <circle cx="130" cy="70" r="6" class="node active" />
+                    <circle cx="130" cy="110" r="6" class="node active" />
+                    <circle cx="130" cy="150" r="6" class="node active" />
+
+                    <circle cx="210" cy="90" r="6" class="node" />
+                    <circle cx="210" cy="130" r="6" class="node" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="arrow-connector">→</div>
+
+        <!-- 4. REPORT -->
+        <div class="stage-column">
+            <div class="stage-label">Report</div>
+            <div class="app-card report-card">
+                <div class="report-header">
+                    <div>
+                        <div class="rh-title">Damage Report</div>
+                        <div class="rh-id">ID: RPT-14B2B06F</div>
+                    </div>
+                    <div class="rh-badge">3 Issues</div>
+                </div>
+                <div class="report-body">
+                    
+                    <!-- Item 1 -->
+                    <div class="finding-row">
+                        <div class="fr-left">
+                            <div class="fr-dot" style="background: var(--acc-living)"></div>
+                            <div class="fr-text">Floor Scratch</div>
+                        </div>
+                        <div class="fr-status" style="color: var(--danger)">New</div>
+                    </div>
+
+                    <!-- Item 2 -->
+                    <div class="finding-row">
+                        <div class="fr-left">
+                            <div class="fr-dot" style="background: var(--acc-kitchen)"></div>
+                            <div class="fr-text">Counter Stain</div>
+                        </div>
+                        <div class="fr-status" style="color: var(--danger)">New</div>
+                    </div>
+
+                    <!-- Item 3 -->
+                    <div class="finding-row">
+                        <div class="fr-left">
+                            <div class="fr-dot" style="background: var(--acc-bed)"></div>
+                            <div class="fr-text">Bed Linens</div>
+                        </div>
+                        <div class="fr-status" style="color: var(--success)">Verified</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Particle Engine ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let mouse = { x: undefined, y: undefined };
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+            for(let i = 0; i < 3; i++) particles.push(new Particle());
+        });
+
+        class Particle {
+            constructor() {
+                this.x = mouse.x;
+                this.y = mouse.y;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = Math.random() * 3;
+                this.life = 1;
+                this.decay = 0.03;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+            draw() {
+                // Blue particles to match the brand
+                ctx.fillStyle = `rgba(37, 99, 235, ${this.life * 0.4})`;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>

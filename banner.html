@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspection Intelligence Banner</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: black; 
+            font-family: sans-serif;
+        }
+        canvas { display: block; }
+
+        #captureBtn {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid white;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.3s;
+            z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        #captureBtn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+<button id="captureBtn">Capture Frame</button>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // 1. SETUP
+    const scene = new THREE.Scene();
+    
+    // FIX 1: CHANGED FOG
+    // Instead of Exponential fog (which starts fading immediately), 
+    // we use Linear Fog. 
+    // 10 = Start fading, 150 = Completely black.
+    // This ensures the text (which is at 0) is perfectly clear.
+    scene.fog = new THREE.Fog(0x000000, 10, 150);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
+    // FIX 2: CAMERA POSITION
+    // We moved the camera closer (from 40 to 25) because we are going to shrink the text.
+    camera.position.z = 25; 
+    camera.position.y = 0;
+
+    const renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        alpha: true, 
+        preserveDrawingBuffer: true 
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.autoRotate = false;
+
+    // ==========================================
+    // TEXT GENERATION LOGIC
+    // ==========================================
+    
+    const vertices = [];
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // We keep high resolution for detail
+    const width = 2500; 
+    const height = 300;
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.fillStyle = '#000000'; 
+    ctx.fillRect(0, 0, width, height);
+    
+    // Font settings
+    ctx.font = '900 150px Arial, sans-serif'; 
+    ctx.fillStyle = '#FFFFFF'; 
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('INSPECTION INTELLIGENCE', width / 2, height / 2);
+
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data; 
+    const textPoints = [];
+
+    // FIX 3: SCALING FACTOR
+    // Previously 0.15. Now 0.04.
+    // This shrinks the physical size of the text in the 3D world.
+    // This means you don't have to zoom out 100 miles to see it.
+    const scale = 0.04; 
+
+    const step = 3; 
+
+    for (let y = 0; y < height; y += step) {
+        for (let x = 0; x < width; x += step) {
+            const index = (y * width + x) * 4;
+            const r = data[index]; 
+
+            if (r > 128) {
+                // Apply the new smaller scale
+                const pX = (x - width / 2) * scale; 
+                const pY = -(y - height / 2) * scale; 
+                
+                // Z-depth (Thickness)
+                const pZ = (Math.random() - 0.5) * 1.5; 
+
+                textPoints.push({x: pX, y: pY, z: pZ});
+                vertices.push(pX, pY, pZ);
+            }
+        }
+    }
+
+    // ==========================================
+    // CLOUD GENERATION
+    // ==========================================
+
+    const cloudPointsPerTextPoint = 3; 
+    
+    // Reduced fade size slightly to match new scale
+    const cloudFadeSize = 3.0; 
+
+    textPoints.forEach(p => {
+        for(let i = 0; i < cloudPointsPerTextPoint; i++) {
+            const u = Math.random();
+            const v = Math.random();
+            const theta = 2 * Math.PI * u;
+            const phi = Math.acos(2 * v - 1);
+            
+            const dist = Math.random();
+            // Power 2.2 keeps the cloud tight to the letters
+            const r = cloudFadeSize * Math.pow(dist, 2.2); 
+
+            const offsetX = r * Math.sin(phi) * Math.cos(theta);
+            const offsetY = r * Math.sin(phi) * Math.sin(theta);
+            const offsetZ = r * Math.cos(phi);
+
+            vertices.push(p.x + offsetX, p.y + offsetY, p.z + offsetZ);
+        }
+    });
+
+    // ==========================================
+    // RENDER SETTINGS
+    // ==========================================
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+    const material = new THREE.PointsMaterial({
+        color: 0xffffff,
+        // FIX 4: DOT SIZE
+        // Increased from 0.08 to 0.12.
+        // Since the object is smaller, the dots need to be relatively bigger 
+        // to maintain that "solid" look.
+        size: 0.12, 
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.7, // Increased opacity for brightness
+        depthWrite: false
+    });
+
+    const pointCloud = new THREE.Points(geometry, material);
+    scene.add(pointCloud);
+
+    // ==========================================
+    // CAPTURE BUTTON
+    // ==========================================
+    const btn = document.getElementById('captureBtn');
+    btn.addEventListener('click', () => {
+        renderer.render(scene, camera);
+        const imgData = renderer.domElement.toDataURL("image/png");
+        const link = document.createElement('a');
+        link.download = 'inspection-intelligence.png';
+        link.href = imgData;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // ==========================================
+    // ANIMATION
+    // ==========================================
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+</script>
+</body>
+</html>

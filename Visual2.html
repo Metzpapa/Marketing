@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RapidEye - STR Property Management</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #faf9f7;
+      min-height: 100vh;
+      position: relative;
+    }
+    #canvas-container {
+      position: absolute;
+      left: -139px;
+      top: -101px;
+      width: 800px;
+      height: 800px;
+      z-index: 100;
+      pointer-events: none;
+    }
+    #root {
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const PMGrowthTimeline = () => {
+      const [activeCompany, setActiveCompany] = useState(null);
+
+      // Text positions - finalized
+      const calloutPositions = {
+        'Vacasa': { x: -126, y: -170 },
+        'Evolve': { x: -368, y: -205 },
+        'AvantStay': { x: 120, y: -113 },
+        'TurnKey': { x: -393, y: -116 },
+        'Grand Welcome': { x: 49, y: -55 },
+        'Blueground': { x: 70, y: -145 },
+      };
+
+      // Line endpoint positions - finalized
+      const lineEndpoints = {
+        'Vacasa': { x: -22, y: -158 },
+        'Evolve': { x: -286, y: -195 },
+        'AvantStay': { x: 201, y: -103 },
+        'TurnKey': { x: -303, y: -106 },
+        'Grand Welcome': { x: 147, y: -47 },
+        'Blueground': { x: 149, y: -137 },
+      };
+
+      // Only verified data points with sources
+      const companies = [
+        {
+          name: 'Vacasa',
+          color: '#1a1a1a',
+          dataPoints: [
+            { year: 2009, properties: 5, label: 'Founded with 5 properties', source: 'TechCrunch', url: 'https://techcrunch.com/2017/04/20/vacasa-yield-management-2-0-portland-vacation-rentals/' },
+            { year: 2014, properties: 1200, label: '1,200 properties', source: 'VRM Intel', url: 'https://vrmintel.com/vacasa-founders-eric-breon-cliff-johnson-inside-look-vacasas-fast-growth-lessons-learned-along-way/' },
+            { year: 2017, properties: 5200, label: '5,200 properties', source: 'TechCrunch', url: 'https://techcrunch.com/2017/04/20/vacasa-yield-management-2-0-portland-vacation-rentals/' },
+            { year: 2018, properties: 10600, label: '10,600 properties (Oasis acquisition)', source: 'GeekWire', url: 'https://www.geekwire.com/2018/vacasa-jumps-vacation-home-sale-process-new-network-connecting-buyers-sellers-agents/' },
+            { year: 2019, properties: 23000, label: '23,000+ (Wyndham acquisition)', source: 'SEC Filing', url: 'https://www.sec.gov/Archives/edgar/data/1361658/000136165819000164/wvrnasalepressrelease.htm', featured: true, callout: 'SEC Filing: Wyndham VR deal adds 9,000 homes' },
+            { year: 2021, properties: 35000, label: '35,000 properties (IPO)', source: 'SEC Filing', url: 'https://www.sec.gov/Archives/edgar/data/1874944/000110465921153954/vcsa-20211227xs1.htm' },
+          ]
+        },
+        {
+          name: 'Evolve',
+          color: '#4a7c59',
+          dataPoints: [
+            { year: 2011, properties: 21, label: 'Beta launch: 21 homes', source: 'VRM Intel', url: 'https://vrmintel.com/how-brian-egan-built-evolve-into-a-profitable-short-term-rental-business-whats-next-for-vacation-rentals/' },
+            { year: 2013, properties: 1000, label: '1,000+ properties', source: 'VRM Intel', url: 'https://vrmintel.com/how-brian-egan-built-evolve-into-a-profitable-short-term-rental-business-whats-next-for-vacation-rentals/' },
+            { year: 2016, properties: 2000, label: '2,000+ properties', source: 'Built In Colorado', url: 'https://www.builtincolorado.com/2016/06/15/evolve-vacation-rental-raises-5-million-funding' },
+            { year: 2018, properties: 9000, label: '9,000+ properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/evolve-vacation-rental-network-announces-80-million-in-new-funding-300701634.html', featured: true, callout: '$80M raise at 9,000 properties' },
+            { year: 2022, properties: 19000, label: '19,000 properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/evolve-raises-100-million-to-continue-building-on-ramp-for-the-next-generation-of-vacation-rental-guests-and-owners-301481180.html' },
+            { year: 2025, properties: 35000, label: '35,000+ properties', source: 'Evolve', url: 'https://evolve.com/vacation-rentals' },
+          ]
+        },
+        {
+          name: 'AvantStay',
+          color: '#8b5a2b',
+          dataPoints: [
+            { year: 2017, properties: 50, label: 'Founded ~50 properties', source: 'Inc.com', url: 'https://www.inc.com/profile/avantstay' },
+            { year: 2019, properties: 150, label: '150 properties (Series A)', source: 'PE Hub', url: 'https://www.pehub.com/hospitality-brand-avantstay-rakes-in-20-mln/' },
+            { year: 2021, properties: 1000, label: '1,000+ properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/avantstay-raises-160-million-in-capital-as-the-hospitality-platform-continues-to-lead-and-institutionalize-a-new-asset-class-for-the-industry-301445723.html', featured: true, callout: '$160M raise at 1,000+ luxury homes' },
+            { year: 2024, properties: 2300, label: '2,300+ properties', source: 'PRWeb', url: 'https://www.prweb.com/releases/avantstay-announces-opening-of-two-vacation-properties-in-nashville-302282806.html' },
+          ]
+        },
+        {
+          name: 'TurnKey',
+          color: '#6b5b95',
+          dataPoints: [
+            { year: 2013, properties: 50, label: 'Founded in Austin', source: 'Medium', url: 'https://medium.com/authority-magazine/john-banczak-of-turnkey-vacation-rentals-the-future-of-travel-in-the-post-covid-world-5326d38ba7c' },
+            { year: 2014, properties: 200, label: '~200 properties (Seed)', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/turnkey-vacation-rentals-secures-3-million-in-seed-financing-from-silverton-partners-and-industry-angels-for-market-expansion-262498411.html' },
+            { year: 2018, properties: 3500, label: '3,500 properties', source: 'Built In Austin', url: 'https://www.builtinaustin.com/articles/turneky-vacation-rentals-raises-31m-series-d', featured: true, callout: 'Built In Austin: 3,500 homes, 55 markets' },
+            { year: 2021, properties: 6000, label: '6,000 (Acquired by Vacasa)', source: 'GeekWire', url: 'https://www.geekwire.com/2021/vacasa-acquires-competitor-turnkey-bolster-vacation-rental-platform/' },
+          ]
+        },
+        {
+          name: 'Grand Welcome',
+          color: '#d4a574',
+          dataPoints: [
+            { year: 2009, properties: 10, label: 'Founded in Mammoth Lakes', source: 'Franchise Times', url: 'https://indyfranchiselaw.com/podcast/launching-your-franchise-opportunity-with-brandon-ezra-of-grand-welcome/' },
+            { year: 2019, properties: 100, label: 'Launched franchise model', source: 'Grand Welcome', url: 'https://www.grandwelcomefranchise.com/' },
+            { year: 2022, properties: 750, label: '750+ properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/grand-welcome-announces-it-has-surpassed-750-short-term-vacation-rental-properties-in-the-us-301605895.html', featured: true, callout: 'PR Newswire: 750 properties in <3 years' },
+            { year: 2024, properties: 1500, label: '1,500+ properties', source: 'The Enterprise World', url: 'https://theenterpriseworld.com/grand-welcome-future-of-travel/' },
+          ]
+        },
+        {
+          name: 'Blueground',
+          color: '#3d85c6',
+          dataPoints: [
+            { year: 2013, properties: 1, label: 'Founded: 1 apartment in Athens', source: 'Blueground', url: 'https://www.theblueground.com/about' },
+            { year: 2018, properties: 1000, label: '1,000+ apartments', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/leading-hospitality-tech-company-blueground-launches-in-united-states-with-plan-to-transform-countrys-property-rental-market-300679548.html' },
+            { year: 2019, properties: 2800, label: '2,800+ apartments', source: 'Crunchbase News', url: 'https://news.crunchbase.com/startups/flexible-apartment-rental-startup-blueground-raises-50m-series-b/' },
+            { year: 2021, properties: 5000, label: '5,000 apartments', source: 'Blueground', url: 'https://www.theblueground.com/blog/hear-our-news/series-c-funding/', featured: true, callout: '$180M Series C at 5,000 apartments' },
+            { year: 2024, properties: 15000, label: '15,000+ apartments', source: 'Business Travel News', url: 'https://www.businesstravelnews.com/Lodging/Blueground-Raises-45M-in-Funding-Round' },
+          ]
+        },
+      ];
+
+      // Chart dimensions
+      const width = 1000;
+      const height = 550;
+      const padding = { top: 60, right: 40, bottom: 60, left: 70 };
+      const chartWidth = width - padding.left - padding.right;
+      const chartHeight = height - padding.top - padding.bottom;
+
+      // Scale functions
+      const minYear = 2008;
+      const maxYear = 2026;
+      const maxProperties = 40000;
+
+      const xScale = (year) => padding.left + ((year - minYear) / (maxYear - minYear)) * chartWidth;
+      const yScale = (properties) => padding.top + chartHeight - (properties / maxProperties) * chartHeight;
+
+      // Generate year labels
+      const years = [2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025];
+
+      // Generate property labels
+      const propertyLabels = [0, 10000, 20000, 30000, 40000];
+
+
+      const styles = {
+        container: {
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+          backgroundColor: '#faf9f7',
+          padding: '48px',
+          minHeight: '100vh',
+          maxWidth: '1100px',
+          margin: '0 auto'
+        },
+        header: {
+          marginBottom: '32px'
+        },
+        label: {
+          fontSize: '11px',
+          letterSpacing: '2px',
+          color: '#999',
+          marginBottom: '8px',
+          fontWeight: '500'
+        },
+        title: {
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize: '42px',
+          fontWeight: '600',
+          fontStyle: 'normal',
+          margin: '0 0 4px 0',
+          color: '#1a1a1a',
+          lineHeight: '1.1',
+          letterSpacing: '-0.5px'
+        },
+        titleMain: {
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontSize: '52px',
+          fontWeight: '400',
+          fontStyle: 'italic',
+          margin: '0 0 8px 0',
+          color: '#1a1a1a',
+          lineHeight: '1.1'
+        },
+        subtitle: {
+          fontSize: '15px',
+          color: '#666',
+          margin: 0,
+          fontWeight: '400'
+        },
+        chartContainer: {
+          backgroundColor: '#fff',
+          borderRadius: '2px',
+          padding: '24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          border: '1px solid #eee'
+        },
+        legend: {
+          display: 'flex',
+          gap: '20px',
+          marginTop: '24px',
+          flexWrap: 'wrap',
+          justifyContent: 'center'
+        },
+        legendItem: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+          transition: 'opacity 0.3s',
+          padding: '4px 8px',
+          borderRadius: '4px'
+        },
+        legendDot: {
+          width: '10px',
+          height: '10px',
+          borderRadius: '50%'
+        },
+        legendText: {
+          fontSize: '13px',
+          color: '#333',
+          fontWeight: '500'
+        },
+        sourcesSection: {
+          marginTop: '48px'
+        },
+        sourcesTitle: {
+          fontSize: '11px',
+          letterSpacing: '2px',
+          color: '#999',
+          marginBottom: '20px',
+          fontWeight: '500'
+        },
+        companySection: {
+          marginBottom: '28px',
+          transition: 'opacity 0.3s'
+        },
+        companyName: {
+          fontWeight: '600',
+          marginBottom: '10px',
+          fontSize: '15px',
+          color: '#1a1a1a',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        },
+        dataPointsRow: {
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '12px'
+        },
+        dataCard: {
+          backgroundColor: '#fff',
+          border: '1px solid #e8e8e8',
+          padding: '14px 18px',
+          borderRadius: '4px',
+          minWidth: '200px',
+          transition: 'box-shadow 0.2s'
+        },
+        dataYear: {
+          fontSize: '11px',
+          color: '#999',
+          marginBottom: '4px',
+          fontWeight: '500'
+        },
+        dataLabel: {
+          fontSize: '14px',
+          color: '#333',
+          marginBottom: '6px',
+          fontWeight: '500'
+        },
+        dataSource: {
+          fontSize: '11px',
+          color: '#3d85c6',
+          textDecoration: 'none'
+        },
+        footer: {
+          marginTop: '40px',
+          paddingTop: '24px',
+          borderTop: '1px solid #e5e5e5',
+          fontSize: '12px',
+          color: '#999',
+          maxWidth: '700px',
+          lineHeight: '1.6'
+        }
+      };
+
+      return (
+        <div style={styles.container}>
+          {/* Header */}
+          <div style={styles.header}>
+            <div style={styles.label}>RAPIDEYE</div>
+            <h1 style={styles.titleMain}>The Scaling Timeline</h1>
+            <p style={styles.subtitle}>STR property management</p>
+          </div>
+
+          {/* Chart */}
+          <div style={styles.chartContainer}>
+            <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
+              {/* Background grid - horizontal lines */}
+              {propertyLabels.map((val) => (
+                <g key={val}>
+                  <line
+                    x1={padding.left}
+                    y1={yScale(val)}
+                    x2={padding.left + chartWidth}
+                    y2={yScale(val)}
+                    stroke="#f0f0f0"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={padding.left - 14}
+                    y={yScale(val)}
+                    textAnchor="end"
+                    alignmentBaseline="middle"
+                    fontSize="11"
+                    fill="#999"
+                    fontFamily="Inter, sans-serif"
+                  >
+                    {val === 0 ? '0' : `${Math.round(val / 1000)}k`}
+                  </text>
+                </g>
+              ))}
+
+              {/* Year labels */}
+              {years.map((year) => (
+                <g key={year}>
+                  <line
+                    x1={xScale(year)}
+                    y1={padding.top}
+                    x2={xScale(year)}
+                    y2={padding.top + chartHeight}
+                    stroke="#f5f5f5"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={xScale(year)}
+                    y={height - padding.bottom + 24}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fill="#999"
+                    fontFamily="Inter, sans-serif"
+                  >
+                    {year}
+                  </text>
+                </g>
+              ))}
+
+              {/* Company lines and points */}
+              {companies.map((company) => {
+                const sortedPoints = [...company.dataPoints].sort((a, b) => a.year - b.year);
+                const points = sortedPoints.map(d => `${xScale(d.year)},${yScale(d.properties)}`).join(' ');
+                const isActive = activeCompany === company.name || activeCompany === null;
+                const featuredPoint = sortedPoints.find(p => p.featured);
+                const textOffset = calloutPositions[company.name] || { x: 50, y: -30 };
+                const lineEndOffset = lineEndpoints[company.name] || { x: 20, y: -20 };
+
+                const handlePointClick = (point) => {
+                  const sourceId = `source-${company.name.replace(/\s+/g, '-')}-${point.year}`;
+                  const element = document.getElementById(sourceId);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.style.boxShadow = '0 0 0 3px ' + company.color + '40';
+                    setTimeout(() => {
+                      element.style.boxShadow = '';
+                    }, 2000);
+                  }
+                };
+
+                const handleCalloutClick = (point) => {
+                  window.open(point.url, '_blank');
+                };
+
+                return (
+                  <g
+                    key={company.name}
+                    opacity={isActive ? 1 : 0.15}
+                    style={{ transition: 'opacity 0.3s' }}
+                  >
+                    {/* Line */}
+                    <polyline
+                      points={points}
+                      fill="none"
+                      stroke={company.color}
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+
+                    {/* Data points */}
+                    {sortedPoints.map((point, i) => (
+                      <g key={i}>
+                        {/* Outer ring on hover */}
+                        <circle
+                          cx={xScale(point.year)}
+                          cy={yScale(point.properties)}
+                          r="12"
+                          fill="transparent"
+                          onMouseEnter={() => setActiveCompany(company.name)}
+                          onMouseLeave={() => setActiveCompany(null)}
+                          onClick={() => handlePointClick(point)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        {/* Visible dot */}
+                        <circle
+                          cx={xScale(point.year)}
+                          cy={yScale(point.properties)}
+                          r={point.featured ? 7 : 5}
+                          fill={company.color}
+                          stroke="#fff"
+                          strokeWidth="2"
+                        />
+                      </g>
+                    ))}
+
+                    {/* Featured callout label */}
+                    {featuredPoint && (
+                      <g opacity={isActive ? 1 : 0.25}>
+                        {/* Connecting line */}
+                        <line
+                          x1={xScale(featuredPoint.year)}
+                          y1={yScale(featuredPoint.properties)}
+                          x2={xScale(featuredPoint.year) + lineEndOffset.x}
+                          y2={yScale(featuredPoint.properties) + lineEndOffset.y}
+                          stroke={company.color}
+                          strokeWidth="1"
+                          opacity="0.35"
+                        />
+                        {/* Callout text */}
+                        <text
+                          x={xScale(featuredPoint.year) + textOffset.x}
+                          y={yScale(featuredPoint.properties) + textOffset.y}
+                          textAnchor="start"
+                          fontSize="9"
+                          fill="#666"
+                          fontFamily="Inter, sans-serif"
+                          fontWeight="400"
+                          letterSpacing="0.2"
+                          onClick={() => handleCalloutClick(featuredPoint)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {featuredPoint.callout}
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* Y-axis label */}
+              <text
+                x={20}
+                y={padding.top + chartHeight / 2}
+                textAnchor="middle"
+                fontSize="11"
+                fill="#999"
+                fontFamily="Inter, sans-serif"
+                transform={`rotate(-90, 20, ${padding.top + chartHeight / 2})`}
+              >
+                Properties Managed
+              </text>
+            </svg>
+
+            {/* Legend */}
+            <div style={styles.legend}>
+              {companies.map((company) => (
+                <div
+                  key={company.name}
+                  style={{
+                    ...styles.legendItem,
+                    opacity: activeCompany === company.name || activeCompany === null ? 1 : 0.3,
+                    backgroundColor: activeCompany === company.name ? '#f5f5f5' : 'transparent'
+                  }}
+                  onMouseEnter={() => setActiveCompany(company.name)}
+                  onMouseLeave={() => setActiveCompany(null)}
+                >
+                  <div style={{ ...styles.legendDot, backgroundColor: company.color }} />
+                  <span style={styles.legendText}>{company.name}</span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+
+          {/* Data table with sources */}
+          <div style={styles.sourcesSection}>
+            <h3 style={styles.sourcesTitle}>VERIFIED DATA POINTS & SOURCES</h3>
+            
+            {companies.map((company) => (
+              <div
+                key={company.name}
+                style={{
+                  ...styles.companySection,
+                  opacity: activeCompany === company.name || activeCompany === null ? 1 : 0.3
+                }}
+              >
+                <div style={styles.companyName}>
+                  <div style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor: company.color
+                  }} />
+                  {company.name}
+                </div>
+                <div style={styles.dataPointsRow}>
+                  {company.dataPoints.map((point, i) => (
+                    <div
+                      key={i}
+                      id={`source-${company.name.replace(/\s+/g, '-')}-${point.year}`}
+                      style={{
+                        ...styles.dataCard,
+                        borderLeft: point.featured ? `3px solid ${company.color}` : '1px solid #e8e8e8',
+                        transition: 'box-shadow 0.3s ease'
+                      }}
+                    >
+                      <div style={styles.dataYear}>{point.year}</div>
+                      <div style={styles.dataLabel}>{point.label}</div>
+                      <a
+                        href={point.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.dataSource}
+                      >
+                        Source: {point.source} ↗
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer note */}
+          <div style={styles.footer}>
+            <em>
+              Note: Only publicly documented milestones with verifiable sources are shown. 
+              Lines connect data points but do not represent interpolated growth between milestones.
+              Grand Welcome operated locally from 2009-2019 before launching their franchise model.
+              Blueground focuses on mid-term furnished rentals (30+ day stays) rather than traditional STR.
+            </em>
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<PMGrowthTimeline />, document.getElementById('root'));
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const container = document.getElementById('canvas-container');
+    const width = 800;
+    const height = 800;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+
+    camera.position.z = 20;
+    camera.position.x = 0;
+    camera.position.y = 0;
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const vertices = [];
+
+    function randomPointOnSphere(radius) {
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.sin(phi) * Math.sin(theta);
+      const z = radius * Math.cos(phi);
+      return { x, y, z };
+    }
+
+    // Cloud layer
+    const cloudCount = 70000;
+    const maxCloudRadius = 10.0;
+    const minCloudRadius = 4.0;
+
+    for (let i = 0; i < cloudCount; i++) {
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      const distanceNormal = Math.random();
+      const r = minCloudRadius + (maxCloudRadius - minCloudRadius) * Math.pow(distanceNormal, 1.8);
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.sin(phi) * Math.sin(theta);
+      const z = r * Math.cos(phi);
+      vertices.push(x, y, z);
+    }
+
+    // Eyeball layer
+    const eyeballCount = 12000;
+    const eyeRadius = 4.0;
+    for (let i = 0; i < eyeballCount; i++) {
+      let p = randomPointOnSphere(eyeRadius);
+      const cutoffNoise = (Math.random() * 0.2) - 0.1;
+      if (p.z > 3.2 + cutoffNoise) continue;
+      vertices.push(p.x, p.y, p.z);
+    }
+
+    // Iris layer
+    const irisCount = 8000;
+    const irisRadius = 2.3;
+    const pupilRadius = 0.8;
+    for (let i = 0; i < irisCount; i++) {
+      const r = Math.sqrt(Math.random()) * irisRadius;
+      const theta = Math.random() * 2 * Math.PI;
+      if (r < pupilRadius) continue;
+      const x = r * Math.cos(theta);
+      const y = r * Math.sin(theta);
+      const z = 3.5 - (r * 0.2);
+      vertices.push(x, y, z);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+    const material = new THREE.PointsMaterial({
+      color: 0x18181B,
+      size: 0.04,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.15,
+      depthWrite: false
+    });
+
+    const pointCloud = new THREE.Points(geometry, material);
+    scene.add(pointCloud);
+
+    // Rotation center angle: 57 degrees in radians
+    const baseAngle = 57 * (Math.PI / 180);
+
+    // Smooth oscillating animation with easing
+    let time = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 0.002;
+      // Smooth oscillation around the base angle (~9 degrees each way)
+      pointCloud.rotation.y = baseAngle + Math.sin(time) * 0.15;
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

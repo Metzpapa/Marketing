@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RapidEye Final Perfected</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg: #F7F7F5;
+            --ink: #18181B;
+            --subtle: #A1A1AA; 
+            --connector: #CBD5E1;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px;
+            background-color: #E5E5E5;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .controls { margin-bottom: 20px; text-align: center; }
+        button {
+            background: var(--ink);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* SQUARE CONTAINER */
+        #capture-target {
+            position: relative;
+            width: 1200px;
+            height: 1200px;
+            background-color: var(--bg);
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+
+        /* LAYER 1: 3D CANVAS */
+        #canvas-container {
+            position: absolute;
+            top: -100px; 
+            left: -100px; 
+            width: 100%;
+            height: 100%;
+            z-index: 1; 
+            pointer-events: none;
+        }
+
+        /* LAYER 2: UI FOREGROUND */
+        #ui-layer {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HEADER */
+        .header-section {
+            position: absolute;
+            top: 80px;
+            left: 80px;
+            z-index: 20;
+        }
+
+        .brand-tag {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--subtle);
+            margin-bottom: 16px;
+        }
+
+        .hero-stat {
+            font-family: 'Playfair Display', serif;
+            font-size: 130px;
+            color: var(--ink);
+            line-height: 0.9;
+            margin-bottom: 12px;
+        }
+
+        .hero-desc {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 32px;
+            color: #52525B;
+        }
+
+        /* AXIS */
+        .x-axis {
+            position: absolute;
+            bottom: 60px;
+            left: 80px;
+            right: 80px;
+            border-top: 1px solid var(--ink);
+            display: flex;
+            justify-content: space-between;
+            padding-top: 20px;
+        }
+
+        .x-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--subtle);
+            font-weight: 600;
+            width: 80px; 
+            text-align: center;
+        }
+
+        /* ANNOTATIONS */
+        .annotation {
+            position: absolute;
+            max-width: 260px;
+        }
+        
+        .note-body {
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            line-height: 1.5;
+            color: var(--ink);
+            font-weight: 500;
+            background: rgba(247, 247, 245, 0.8);
+            backdrop-filter: blur(2px);
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .note-start { bottom: 220px; left: 80px; }
+        .note-report { bottom: 430px; left: 290px; }
+        .note-trials { bottom: 640px; left: 600px; text-align: center;}
+
+        /* QUOTES */
+        .quote-container {
+            position: absolute;
+            width: 420px;
+            z-index: 20;
+            text-align: right;
+            right: 80px; /* Aligned to right margin */
+        }
+        .q-text {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 24px;
+            color: #52525B;
+            line-height: 1.4;
+            margin-bottom: 14px;
+        }
+        .q-auth {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            /* Reverse flex so the dash appears after the name for right alignment */
+            flex-direction: row-reverse;
+        }
+        
+        /* The decorative dash */
+        .q-auth::before {
+            content: '';
+            display: block;
+            width: 25px;
+            height: 1px;
+            background-color: var(--ink);
+        }
+        
+        /* Positions */
+        
+        /* Heather: Bottom Right */
+        .q-heather { 
+            bottom: 130px; 
+        }
+
+        /* Simon: Stacked above Heather */
+        .q-simon { 
+            bottom: 290px; 
+        }
+
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button onclick="downloadImage()">Download Final Image</button>
+    </div>
+
+    <div id="capture-target">
+        
+        <div id="canvas-container"></div>
+
+        <div id="ui-layer">
+            <div class="header-section">
+                <div class="brand-tag">RapidEye</div>
+                <div class="hero-stat" id="hero-title">1.2 Million</div>
+                <div class="hero-desc">Total photos processed</div>
+            </div>
+
+            <div class="x-axis">
+                <div class="x-label" style="text-align:left">Sep '25</div>
+                <div class="x-label">Oct '25</div>
+                <div class="x-label">Nov '25</div>
+                <div class="x-label">Dec '25</div>
+                <div class="x-label" style="text-align:right; color:var(--ink)">Jan '26</div>
+            </div>
+
+            <!-- Annotations -->
+            <div class="annotation note-start">
+                <div class="note-body">Rohan & I started working on RapidEye together.</div>
+            </div>
+
+            <div class="annotation note-report">
+                <div class="note-body">First demo reports generated for actual clients.</div>
+            </div>
+
+            <div class="annotation note-trials">
+                <div class="note-body">Lots of demos & trials with property management firms.</div>
+            </div>
+
+            <!-- Quotes -->
+            
+            <div class="quote-container q-simon">
+                <div class="q-text">"80% of repetitive workflows... will be taken over by AI without a doubt."</div>
+                <div class="q-auth">Simon Lehmann</div>
+            </div>
+
+            <div class="quote-container q-heather">
+                <div class="q-text">"The goal is not to replace empathy, but to free up time for empathy."</div>
+                <div class="q-auth">Heather Bayer</div>
+            </div>
+
+            <svg viewBox="0 0 1200 1200">
+                
+                <defs>
+                    <marker id="arrow" markerWidth="24" markerHeight="24" refX="20" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+                        <path d="M20,0 L20,16 L0,8 z" fill="#18181B" />
+                    </marker>
+                </defs>
+
+                <!-- 1. TITLE CONNECTOR (THE ARROW) -->
+                <!-- Arrow at header end, line connects directly to the dot at (1120, 440) -->
+                <path d="M 720 180 Q 970 200 1120 440" 
+                    fill="none" stroke="#18181B" stroke-width="3" marker-start="url(#arrow)" />
+
+                <!-- 2. GRAPH: PAST (Solid) -->
+                <polyline points="
+                    80,1080
+                    180,1070 
+                    280,990 
+                    340,920 
+                    400,960 
+                    550,790 
+                    600,820 
+                    750,690
+                    860,590 
+                    1000,490 
+                    1120,440" 
+                    fill="none" stroke="#18181B" stroke-width="5" stroke-linejoin="round" />
+
+                <!-- 3. GRAPH: FUTURE (Dotted) -->
+                <polyline points="
+                    1120,440
+                    1160,420
+                    1200,410" 
+                    fill="none" stroke="#18181B" stroke-width="5" stroke-dasharray="0, 10" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+
+                <!-- 4. DATA DOTS -->
+                <circle cx="1120" cy="440" r="10" fill="#18181B" />
+
+                <!-- 5. ANNOTATION CONNECTORS -->
+                <line x1="80" y1="1080" x2="80" y2="1020" stroke="#A1A1AA" stroke-width="1" stroke-dasharray="3,3" />
+                <line x1="340" y1="920" x2="340" y2="770" stroke="#A1A1AA" stroke-width="1" stroke-dasharray="3,3" />
+
+                <!-- 6. STRAIGHT BRACKET -->
+                <path d="M 550 790 L 530 765 L 840 565 L 860 590" 
+                      fill="none" stroke="#A1A1AA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+                
+                <!-- 7. POINTER TO TEXT -->
+                <line x1="685" y1="665" x2="685" y2="570" stroke="#A1A1AA" stroke-width="1.5" stroke-dasharray="3,3" />
+                
+            </svg>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        const container = document.getElementById('canvas-container');
+        const width = 1200; 
+        const height = 1200;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        
+        camera.position.z = 22; 
+        camera.position.x = 6; 
+        camera.position.y = -2;
+
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true, 
+            alpha: true,               
+            preserveDrawingBuffer: true 
+        });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(1);
+        container.appendChild(renderer.domElement);
+
+        const vertices = [];
+        
+        function randomPointOnSphere(radius) {
+            const u = Math.random();
+            const v = Math.random();
+            const theta = 2 * Math.PI * u;
+            const phi = Math.acos(2 * v - 1);
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+            return { x, y, z };
+        }
+
+        const cloudCount = 70000;
+        const maxCloudRadius = 10.0; 
+        const minCloudRadius = 4.0;
+
+        for (let i = 0; i < cloudCount; i++) {
+            const u = Math.random();
+            const v = Math.random();
+            const theta = 2 * Math.PI * u;
+            const phi = Math.acos(2 * v - 1);
+            const distanceNormal = Math.random(); 
+            const r = minCloudRadius + (maxCloudRadius - minCloudRadius) * Math.pow(distanceNormal, 1.8); 
+            const x = r * Math.sin(phi) * Math.cos(theta);
+            const y = r * Math.sin(phi) * Math.sin(theta);
+            const z = r * Math.cos(phi);
+            vertices.push(x, y, z);
+        }
+
+        const eyeballCount = 12000; 
+        const eyeRadius = 4.0;
+        for (let i = 0; i < eyeballCount; i++) {
+            let p = randomPointOnSphere(eyeRadius);
+            const cutoffNoise = (Math.random() * 0.2) - 0.1;
+            if (p.z > 3.2 + cutoffNoise) continue; 
+            vertices.push(p.x, p.y, p.z);
+        }
+
+        const irisCount = 8000; 
+        const irisRadius = 2.3;  
+        const pupilRadius = 0.8;
+        for (let i = 0; i < irisCount; i++) {
+            const r = Math.sqrt(Math.random()) * irisRadius;
+            const theta = Math.random() * 2 * Math.PI;
+            if (r < pupilRadius) continue; 
+            const x = r * Math.cos(theta);
+            const y = r * Math.sin(theta);
+            const z = 3.5 - (r * 0.2); 
+            vertices.push(x, y, z);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        const material = new THREE.PointsMaterial({
+            color: 0x18181B, 
+            size: 0.04, 
+            sizeAttenuation: true,
+            transparent: true,
+            opacity: 0.12, 
+            depthWrite: false
+        });
+
+        const pointCloud = new THREE.Points(geometry, material);
+        pointCloud.position.x = -1;
+        scene.add(pointCloud);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            pointCloud.rotation.y += 0.002; 
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.downloadImage = function() {
+            const node = document.getElementById('capture-target');
+            document.fonts.ready.then(function () {
+                html2canvas(node, {
+                    scale: 2, 
+                    backgroundColor: "#F7F7F5",
+                    useCORS: true
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = 'rapideye-final-perfected.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+            });
+        }
+    </script>
+</body>
+</html>
