@@ -27,35 +27,184 @@
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: #faf9f7;
-      min-height: 100vh;
-      position: relative;
-    }
-    #canvas-container {
-      position: absolute;
-      left: -139px;
-      top: -101px;
-      width: 800px;
-      height: 800px;
-      z-index: 100;
-      pointer-events: none;
+      height: 100vh;
+      overflow: hidden; /* Prevent body scroll to keep "one screen" feel */
     }
     #root {
-      position: relative;
-      z-index: 1;
+      height: 100%;
+    }
+    /* Custom Scrollbar for the source panel */
+    .source-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .source-scroll::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    .source-scroll::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 3px;
+    }
+    .source-scroll::-webkit-scrollbar-thumb:hover {
+      background: #999;
     }
   </style>
 </head>
 <body>
-  <div id="canvas-container"></div>
   <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState } = React;
+  <script type="text/babel" data-type="module">
+    import * as THREE from 'three';
+    const { useState, useEffect, useRef } = React;
 
+    // --- 3D Logo Component ---
+    const RapidEyeLogo = () => {
+      const mountRef = useRef(null);
+
+      useEffect(() => {
+        if (!mountRef.current) return;
+
+        const width = 200;
+        const height = 200;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        
+        camera.position.z = 24; 
+        camera.position.x = 0;
+        camera.position.y = 0;
+
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: true
+        });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        mountRef.current.appendChild(renderer.domElement);
+
+        const vertices = [];
+
+        function randomPointOnSphere(radius) {
+          const u = Math.random();
+          const v = Math.random();
+          const theta = 2 * Math.PI * u;
+          const phi = Math.acos(2 * v - 1);
+          const x = radius * Math.sin(phi) * Math.cos(theta);
+          const y = radius * Math.sin(phi) * Math.sin(theta);
+          const z = radius * Math.cos(phi);
+          return { x, y, z };
+        }
+
+        // Cloud layer
+        const cloudCount = 60000;
+        const maxCloudRadius = 10.0;
+        const minCloudRadius = 4.0;
+
+        for (let i = 0; i < cloudCount; i++) {
+          const u = Math.random();
+          const v = Math.random();
+          const theta = 2 * Math.PI * u;
+          const phi = Math.acos(2 * v - 1);
+          const distanceNormal = Math.random();
+          const r = minCloudRadius + (maxCloudRadius - minCloudRadius) * Math.pow(distanceNormal, 1.8);
+          const x = r * Math.sin(phi) * Math.cos(theta);
+          const y = r * Math.sin(phi) * Math.sin(theta);
+          const z = r * Math.cos(phi);
+          vertices.push(x, y, z);
+        }
+
+        // Eyeball layer
+        const eyeballCount = 12000;
+        const eyeRadius = 4.0;
+        for (let i = 0; i < eyeballCount; i++) {
+          let p = randomPointOnSphere(eyeRadius);
+          const cutoffNoise = (Math.random() * 0.2) - 0.1;
+          if (p.z > 3.2 + cutoffNoise) continue;
+          vertices.push(p.x, p.y, p.z);
+        }
+
+        // Iris layer
+        const irisCount = 8000;
+        const irisRadius = 2.3;
+        const pupilRadius = 0.8;
+        for (let i = 0; i < irisCount; i++) {
+          const r = Math.sqrt(Math.random()) * irisRadius;
+          const theta = Math.random() * 2 * Math.PI;
+          if (r < pupilRadius) continue;
+          const x = r * Math.cos(theta);
+          const y = r * Math.sin(theta);
+          const z = 3.5 - (r * 0.2);
+          vertices.push(x, y, z);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        const material = new THREE.PointsMaterial({
+          color: 0x18181B,
+          size: 0.05,
+          sizeAttenuation: true,
+          transparent: true,
+          opacity: 0.25,
+          depthWrite: false
+        });
+
+        const pointCloud = new THREE.Points(geometry, material);
+        scene.add(pointCloud);
+
+        const baseAngle = 57 * (Math.PI / 180);
+
+        let animationId;
+        let time = 0;
+        
+        const animate = () => {
+          animationId = requestAnimationFrame(animate);
+          time += 0.002;
+          pointCloud.rotation.y = baseAngle + Math.sin(time) * 0.15;
+          renderer.render(scene, camera);
+        };
+        
+        animate();
+
+        return () => {
+          cancelAnimationFrame(animationId);
+          if (mountRef.current) {
+            mountRef.current.removeChild(renderer.domElement);
+          }
+          geometry.dispose();
+          material.dispose();
+          renderer.dispose();
+        };
+      }, []);
+
+      const maskStyle = {
+        WebkitMaskImage: 'radial-gradient(circle, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 70%)',
+        maskImage: 'radial-gradient(circle, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 70%)'
+      };
+
+      return (
+        <div 
+          ref={mountRef} 
+          style={{ 
+            width: '200px', 
+            height: '200px', 
+            position: 'absolute',
+            left: '-70px',
+            top: '-55px',
+            pointerEvents: 'none',
+            zIndex: 0,
+            ...maskStyle
+          }} 
+        />
+      );
+    };
+
+    // --- Main Application ---
     const PMGrowthTimeline = () => {
       const [activeCompany, setActiveCompany] = useState(null);
+      const sourcesContainerRef = useRef(null);
 
-      // Text positions - finalized
+      // Text positions
       const calloutPositions = {
         'Vacasa': { x: -126, y: -170 },
         'Evolve': { x: -368, y: -205 },
@@ -65,7 +214,7 @@
         'Blueground': { x: 70, y: -145 },
       };
 
-      // Line endpoint positions - finalized
+      // Line endpoint positions
       const lineEndpoints = {
         'Vacasa': { x: -22, y: -158 },
         'Evolve': { x: -286, y: -195 },
@@ -75,7 +224,6 @@
         'Blueground': { x: 149, y: -137 },
       };
 
-      // Only verified data points with sources
       const companies = [
         {
           name: 'Vacasa',
@@ -161,22 +309,31 @@
 
       // Generate year labels
       const years = [2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025];
-
-      // Generate property labels
       const propertyLabels = [0, 10000, 20000, 30000, 40000];
-
 
       const styles = {
         container: {
           fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
           backgroundColor: '#faf9f7',
-          padding: '48px',
-          minHeight: '100vh',
-          maxWidth: '1100px',
-          margin: '0 auto'
+          padding: '32px 48px',
+          height: '100vh',
+          maxWidth: '1400px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column'
         },
         header: {
-          marginBottom: '32px'
+          marginBottom: '16px',
+          position: 'relative',
+          minHeight: '100px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          flexShrink: 0
+        },
+        headerText: {
+          marginLeft: '100px',
+          zIndex: 2
         },
         label: {
           fontSize: '11px',
@@ -184,16 +341,6 @@
           color: '#999',
           marginBottom: '8px',
           fontWeight: '500'
-        },
-        title: {
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontSize: '42px',
-          fontWeight: '600',
-          fontStyle: 'normal',
-          margin: '0 0 4px 0',
-          color: '#1a1a1a',
-          lineHeight: '1.1',
-          letterSpacing: '-0.5px'
         },
         titleMain: {
           fontFamily: "'Playfair Display', Georgia, serif",
@@ -210,100 +357,145 @@
           margin: 0,
           fontWeight: '400'
         },
-        chartContainer: {
+        mainContent: {
+          display: 'flex',
+          gap: '24px',
+          flex: 1,
+          minHeight: 0, // Important for nested flex scrolling
+        },
+        chartSection: {
+          flex: '2',
           backgroundColor: '#fff',
           borderRadius: '2px',
           padding: '24px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          border: '1px solid #eee'
+          border: '1px solid #eee',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative'
+        },
+        sourcesSection: {
+          flex: '1',
+          backgroundColor: '#fff',
+          borderRadius: '2px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          border: '1px solid #eee',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        },
+        sourcesHeader: {
+          padding: '16px 20px',
+          borderBottom: '1px solid #eee',
+          backgroundColor: '#fff',
+          zIndex: 10
+        },
+        sourcesTitle: {
+          fontSize: '11px',
+          letterSpacing: '2px',
+          color: '#999',
+          fontWeight: '600',
+          margin: 0
+        },
+        sourcesList: {
+          overflowY: 'auto',
+          padding: '16px 20px',
+          flex: 1
+        },
+        companyGroup: {
+          marginBottom: '24px'
+        },
+        companyHeader: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '12px',
+          position: 'sticky',
+          top: 0,
+          backgroundColor: '#fff',
+          padding: '4px 0',
+          zIndex: 5
+        },
+        companyDot: {
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%'
+        },
+        companyName: {
+          fontSize: '13px',
+          fontWeight: '600',
+          color: '#1a1a1a'
+        },
+        sourceCard: {
+          padding: '12px',
+          border: '1px solid #eee',
+          borderRadius: '4px',
+          marginBottom: '8px',
+          transition: 'all 0.3s ease',
+          backgroundColor: '#fafafa'
+        },
+        sourceYear: {
+          fontSize: '10px',
+          fontWeight: '600',
+          color: '#999',
+          marginBottom: '4px'
+        },
+        sourceLabel: {
+          fontSize: '13px',
+          color: '#333',
+          marginBottom: '6px',
+          lineHeight: '1.4'
+        },
+        sourceLink: {
+          fontSize: '10px',
+          color: '#3d85c6',
+          textDecoration: 'none',
+          display: 'block'
         },
         legend: {
           display: 'flex',
-          gap: '20px',
-          marginTop: '24px',
+          gap: '16px',
+          marginTop: 'auto',
+          paddingTop: '16px',
           flexWrap: 'wrap',
           justifyContent: 'center'
         },
         legendItem: {
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: '6px',
           cursor: 'pointer',
-          transition: 'opacity 0.3s',
           padding: '4px 8px',
-          borderRadius: '4px'
-        },
-        legendDot: {
-          width: '10px',
-          height: '10px',
-          borderRadius: '50%'
-        },
-        legendText: {
-          fontSize: '13px',
-          color: '#333',
-          fontWeight: '500'
-        },
-        sourcesSection: {
-          marginTop: '48px'
-        },
-        sourcesTitle: {
-          fontSize: '11px',
-          letterSpacing: '2px',
-          color: '#999',
-          marginBottom: '20px',
-          fontWeight: '500'
-        },
-        companySection: {
-          marginBottom: '28px',
-          transition: 'opacity 0.3s'
-        },
-        companyName: {
-          fontWeight: '600',
-          marginBottom: '10px',
-          fontSize: '15px',
-          color: '#1a1a1a',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        },
-        dataPointsRow: {
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px'
-        },
-        dataCard: {
-          backgroundColor: '#fff',
-          border: '1px solid #e8e8e8',
-          padding: '14px 18px',
           borderRadius: '4px',
-          minWidth: '200px',
-          transition: 'box-shadow 0.2s'
-        },
-        dataYear: {
-          fontSize: '11px',
-          color: '#999',
-          marginBottom: '4px',
-          fontWeight: '500'
-        },
-        dataLabel: {
-          fontSize: '14px',
-          color: '#333',
-          marginBottom: '6px',
-          fontWeight: '500'
-        },
-        dataSource: {
-          fontSize: '11px',
-          color: '#3d85c6',
-          textDecoration: 'none'
+          fontSize: '12px'
         },
         footer: {
-          marginTop: '40px',
-          paddingTop: '24px',
-          borderTop: '1px solid #e5e5e5',
-          fontSize: '12px',
+          marginTop: '16px',
+          fontSize: '11px',
           color: '#999',
-          maxWidth: '700px',
-          lineHeight: '1.6'
+          lineHeight: '1.5',
+          flexShrink: 0
+        }
+      };
+
+      const handlePointClick = (companyName, point) => {
+        setActiveCompany(companyName);
+        const sourceId = `source-${companyName.replace(/\s+/g, '-')}-${point.year}`;
+        const element = document.getElementById(sourceId);
+        
+        if (element && sourcesContainerRef.current) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Flash effect
+          element.style.borderColor = companies.find(c => c.name === companyName).color;
+          element.style.backgroundColor = '#fff';
+          element.style.boxShadow = '0 0 0 2px ' + companies.find(c => c.name === companyName).color + '20';
+          
+          setTimeout(() => {
+            element.style.borderColor = '#eee';
+            element.style.backgroundColor = '#fafafa';
+            element.style.boxShadow = 'none';
+          }, 2000);
         }
       };
 
@@ -311,369 +503,146 @@
         <div style={styles.container}>
           {/* Header */}
           <div style={styles.header}>
-            <div style={styles.label}>RAPIDEYE</div>
-            <h1 style={styles.titleMain}>The Scaling Timeline</h1>
-            <p style={styles.subtitle}>STR property management</p>
+            <RapidEyeLogo />
+            <div style={styles.headerText}>
+              <div style={styles.label}>RAPIDEYE</div>
+              <h1 style={styles.titleMain}>The Scaling Timeline</h1>
+              <p style={styles.subtitle}>STR property management</p>
+            </div>
           </div>
 
-          {/* Chart */}
-          <div style={styles.chartContainer}>
-            <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
-              {/* Background grid - horizontal lines */}
-              {propertyLabels.map((val) => (
-                <g key={val}>
-                  <line
-                    x1={padding.left}
-                    y1={yScale(val)}
-                    x2={padding.left + chartWidth}
-                    y2={yScale(val)}
-                    stroke="#f0f0f0"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={padding.left - 14}
-                    y={yScale(val)}
-                    textAnchor="end"
-                    alignmentBaseline="middle"
-                    fontSize="11"
-                    fill="#999"
-                    fontFamily="Inter, sans-serif"
-                  >
-                    {val === 0 ? '0' : `${Math.round(val / 1000)}k`}
-                  </text>
-                </g>
-              ))}
+          {/* Main Content Split */}
+          <div style={styles.mainContent}>
+            
+            {/* Left Column: Chart */}
+            <div style={styles.chartSection}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" style={{ overflow: 'visible' }}>
+                  {/* Grid */}
+                  {propertyLabels.map((val) => (
+                    <g key={val}>
+                      <line x1={padding.left} y1={yScale(val)} x2={padding.left + chartWidth} y2={yScale(val)} stroke="#f0f0f0" strokeWidth="1" />
+                      <text x={padding.left - 14} y={yScale(val)} textAnchor="end" alignmentBaseline="middle" fontSize="11" fill="#999" fontFamily="Inter">{val === 0 ? '0' : `${Math.round(val / 1000)}k`}</text>
+                    </g>
+                  ))}
+                  {years.map((year) => (
+                    <g key={year}>
+                      <line x1={xScale(year)} y1={padding.top} x2={xScale(year)} y2={padding.top + chartHeight} stroke="#f5f5f5" strokeWidth="1" />
+                      <text x={xScale(year)} y={height - padding.bottom + 24} textAnchor="middle" fontSize="11" fill="#999" fontFamily="Inter">{year}</text>
+                    </g>
+                  ))}
 
-              {/* Year labels */}
-              {years.map((year) => (
-                <g key={year}>
-                  <line
-                    x1={xScale(year)}
-                    y1={padding.top}
-                    x2={xScale(year)}
-                    y2={padding.top + chartHeight}
-                    stroke="#f5f5f5"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={xScale(year)}
-                    y={height - padding.bottom + 24}
-                    textAnchor="middle"
-                    fontSize="11"
-                    fill="#999"
-                    fontFamily="Inter, sans-serif"
-                  >
-                    {year}
-                  </text>
-                </g>
-              ))}
+                  {/* Companies */}
+                  {companies.map((company) => {
+                    const sortedPoints = [...company.dataPoints].sort((a, b) => a.year - b.year);
+                    const points = sortedPoints.map(d => `${xScale(d.year)},${yScale(d.properties)}`).join(' ');
+                    const isActive = activeCompany === company.name || activeCompany === null;
+                    const featuredPoint = sortedPoints.find(p => p.featured);
+                    const textOffset = calloutPositions[company.name] || { x: 50, y: -30 };
+                    const lineEndOffset = lineEndpoints[company.name] || { x: 20, y: -20 };
 
-              {/* Company lines and points */}
-              {companies.map((company) => {
-                const sortedPoints = [...company.dataPoints].sort((a, b) => a.year - b.year);
-                const points = sortedPoints.map(d => `${xScale(d.year)},${yScale(d.properties)}`).join(' ');
-                const isActive = activeCompany === company.name || activeCompany === null;
-                const featuredPoint = sortedPoints.find(p => p.featured);
-                const textOffset = calloutPositions[company.name] || { x: 50, y: -30 };
-                const lineEndOffset = lineEndpoints[company.name] || { x: 20, y: -20 };
-
-                const handlePointClick = (point) => {
-                  const sourceId = `source-${company.name.replace(/\s+/g, '-')}-${point.year}`;
-                  const element = document.getElementById(sourceId);
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    element.style.boxShadow = '0 0 0 3px ' + company.color + '40';
-                    setTimeout(() => {
-                      element.style.boxShadow = '';
-                    }, 2000);
-                  }
-                };
-
-                const handleCalloutClick = (point) => {
-                  window.open(point.url, '_blank');
-                };
-
-                return (
-                  <g
+                    return (
+                      <g key={company.name} opacity={isActive ? 1 : 0.15} style={{ transition: 'opacity 0.3s' }}>
+                        <polyline points={points} fill="none" stroke={company.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        {sortedPoints.map((point, i) => (
+                          <g key={i}>
+                            <circle 
+                              cx={xScale(point.year)} cy={yScale(point.properties)} r="12" fill="transparent" 
+                              onMouseEnter={() => setActiveCompany(company.name)} 
+                              onMouseLeave={() => setActiveCompany(null)} 
+                              onClick={() => handlePointClick(company.name, point)} 
+                              style={{ cursor: 'pointer' }} 
+                            />
+                            <circle cx={xScale(point.year)} cy={yScale(point.properties)} r={point.featured ? 7 : 5} fill={company.color} stroke="#fff" strokeWidth="2" pointerEvents="none" />
+                          </g>
+                        ))}
+                        {featuredPoint && (
+                          <g opacity={isActive ? 1 : 0.25}>
+                            <line x1={xScale(featuredPoint.year)} y1={yScale(featuredPoint.properties)} x2={xScale(featuredPoint.year) + lineEndOffset.x} y2={yScale(featuredPoint.properties) + lineEndOffset.y} stroke={company.color} strokeWidth="1" opacity="0.35" />
+                            <text 
+                              x={xScale(featuredPoint.year) + textOffset.x} y={yScale(featuredPoint.properties) + textOffset.y} 
+                              textAnchor="start" fontSize="9" fill="#666" fontFamily="Inter" fontWeight="400" 
+                              onClick={() => handlePointClick(company.name, featuredPoint)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              {featuredPoint.callout}
+                            </text>
+                          </g>
+                        )}
+                      </g>
+                    );
+                  })}
+                  <text x={20} y={padding.top + chartHeight / 2} textAnchor="middle" fontSize="11" fill="#999" fontFamily="Inter" transform={`rotate(-90, 20, ${padding.top + chartHeight / 2})`}>Properties Managed</text>
+                </svg>
+              </div>
+              
+              {/* Legend */}
+              <div style={styles.legend}>
+                {companies.map((company) => (
+                  <div
                     key={company.name}
-                    opacity={isActive ? 1 : 0.15}
-                    style={{ transition: 'opacity 0.3s' }}
+                    style={{
+                      ...styles.legendItem,
+                      opacity: activeCompany === company.name || activeCompany === null ? 1 : 0.3,
+                      backgroundColor: activeCompany === company.name ? '#f5f5f5' : 'transparent'
+                    }}
+                    onMouseEnter={() => setActiveCompany(company.name)}
+                    onMouseLeave={() => setActiveCompany(null)}
                   >
-                    {/* Line */}
-                    <polyline
-                      points={points}
-                      fill="none"
-                      stroke={company.color}
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-
-                    {/* Data points */}
-                    {sortedPoints.map((point, i) => (
-                      <g key={i}>
-                        {/* Outer ring on hover */}
-                        <circle
-                          cx={xScale(point.year)}
-                          cy={yScale(point.properties)}
-                          r="12"
-                          fill="transparent"
-                          onMouseEnter={() => setActiveCompany(company.name)}
-                          onMouseLeave={() => setActiveCompany(null)}
-                          onClick={() => handlePointClick(point)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                        {/* Visible dot */}
-                        <circle
-                          cx={xScale(point.year)}
-                          cy={yScale(point.properties)}
-                          r={point.featured ? 7 : 5}
-                          fill={company.color}
-                          stroke="#fff"
-                          strokeWidth="2"
-                        />
-                      </g>
-                    ))}
-
-                    {/* Featured callout label */}
-                    {featuredPoint && (
-                      <g opacity={isActive ? 1 : 0.25}>
-                        {/* Connecting line */}
-                        <line
-                          x1={xScale(featuredPoint.year)}
-                          y1={yScale(featuredPoint.properties)}
-                          x2={xScale(featuredPoint.year) + lineEndOffset.x}
-                          y2={yScale(featuredPoint.properties) + lineEndOffset.y}
-                          stroke={company.color}
-                          strokeWidth="1"
-                          opacity="0.35"
-                        />
-                        {/* Callout text */}
-                        <text
-                          x={xScale(featuredPoint.year) + textOffset.x}
-                          y={yScale(featuredPoint.properties) + textOffset.y}
-                          textAnchor="start"
-                          fontSize="9"
-                          fill="#666"
-                          fontFamily="Inter, sans-serif"
-                          fontWeight="400"
-                          letterSpacing="0.2"
-                          onClick={() => handleCalloutClick(featuredPoint)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          {featuredPoint.callout}
-                        </text>
-                      </g>
-                    )}
-                  </g>
-                );
-              })}
-
-              {/* Y-axis label */}
-              <text
-                x={20}
-                y={padding.top + chartHeight / 2}
-                textAnchor="middle"
-                fontSize="11"
-                fill="#999"
-                fontFamily="Inter, sans-serif"
-                transform={`rotate(-90, 20, ${padding.top + chartHeight / 2})`}
-              >
-                Properties Managed
-              </text>
-            </svg>
-
-            {/* Legend */}
-            <div style={styles.legend}>
-              {companies.map((company) => (
-                <div
-                  key={company.name}
-                  style={{
-                    ...styles.legendItem,
-                    opacity: activeCompany === company.name || activeCompany === null ? 1 : 0.3,
-                    backgroundColor: activeCompany === company.name ? '#f5f5f5' : 'transparent'
-                  }}
-                  onMouseEnter={() => setActiveCompany(company.name)}
-                  onMouseLeave={() => setActiveCompany(null)}
-                >
-                  <div style={{ ...styles.legendDot, backgroundColor: company.color }} />
-                  <span style={styles.legendText}>{company.name}</span>
-                </div>
-              ))}
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: company.color }} />
+                    <span style={{ color: '#333', fontWeight: '500' }}>{company.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-          </div>
-
-          {/* Data table with sources */}
-          <div style={styles.sourcesSection}>
-            <h3 style={styles.sourcesTitle}>VERIFIED DATA POINTS & SOURCES</h3>
-            
-            {companies.map((company) => (
-              <div
-                key={company.name}
-                style={{
-                  ...styles.companySection,
-                  opacity: activeCompany === company.name || activeCompany === null ? 1 : 0.3
-                }}
-              >
-                <div style={styles.companyName}>
-                  <div style={{
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: '50%',
-                    backgroundColor: company.color
-                  }} />
-                  {company.name}
-                </div>
-                <div style={styles.dataPointsRow}>
-                  {company.dataPoints.map((point, i) => (
-                    <div
-                      key={i}
-                      id={`source-${company.name.replace(/\s+/g, '-')}-${point.year}`}
-                      style={{
-                        ...styles.dataCard,
-                        borderLeft: point.featured ? `3px solid ${company.color}` : '1px solid #e8e8e8',
-                        transition: 'box-shadow 0.3s ease'
-                      }}
-                    >
-                      <div style={styles.dataYear}>{point.year}</div>
-                      <div style={styles.dataLabel}>{point.label}</div>
-                      <a
-                        href={point.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={styles.dataSource}
-                      >
-                        Source: {point.source} ↗
-                      </a>
-                    </div>
-                  ))}
-                </div>
+            {/* Right Column: Scrollable Sources */}
+            <div style={styles.sourcesSection}>
+              <div style={styles.sourcesHeader}>
+                <h3 style={styles.sourcesTitle}>DATA SOURCES</h3>
               </div>
-            ))}
+              <div style={styles.sourcesList} className="source-scroll" ref={sourcesContainerRef}>
+                {companies.map((company) => (
+                  <div key={company.name} style={{
+                    ...styles.companyGroup,
+                    opacity: activeCompany === company.name || activeCompany === null ? 1 : 0.3,
+                    transition: 'opacity 0.3s'
+                  }}>
+                    <div style={styles.companyHeader}>
+                      <div style={{ ...styles.companyDot, backgroundColor: company.color }} />
+                      <span style={styles.companyName}>{company.name}</span>
+                    </div>
+                    {company.dataPoints.map((point, i) => (
+                      <div
+                        key={i}
+                        id={`source-${company.name.replace(/\s+/g, '-')}-${point.year}`}
+                        style={{
+                          ...styles.sourceCard,
+                          borderLeft: point.featured ? `3px solid ${company.color}` : '1px solid #eee'
+                        }}
+                      >
+                        <div style={styles.sourceYear}>{point.year}</div>
+                        <div style={styles.sourceLabel}>{point.label}</div>
+                        <a href={point.url} target="_blank" rel="noopener noreferrer" style={styles.sourceLink}>
+                          Source: {point.source} ↗
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Footer note */}
+          {/* Footer */}
           <div style={styles.footer}>
-            <em>
-              Note: Only publicly documented milestones with verifiable sources are shown. 
-              Lines connect data points but do not represent interpolated growth between milestones.
-              Grand Welcome operated locally from 2009-2019 before launching their franchise model.
-              Blueground focuses on mid-term furnished rentals (30+ day stays) rather than traditional STR.
-            </em>
+            <em>Note: Only publicly documented milestones with verifiable sources are shown. Lines connect data points but do not represent interpolated growth.</em>
           </div>
         </div>
       );
     };
 
     ReactDOM.render(<PMGrowthTimeline />, document.getElementById('root'));
-  </script>
-
-  <script type="module">
-    import * as THREE from 'three';
-
-    const container = document.getElementById('canvas-container');
-    const width = 800;
-    const height = 800;
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-
-    camera.position.z = 20;
-    camera.position.x = 0;
-    camera.position.y = 0;
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true
-    });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(renderer.domElement);
-
-    const vertices = [];
-
-    function randomPointOnSphere(radius) {
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2 * Math.PI * u;
-      const phi = Math.acos(2 * v - 1);
-      const x = radius * Math.sin(phi) * Math.cos(theta);
-      const y = radius * Math.sin(phi) * Math.sin(theta);
-      const z = radius * Math.cos(phi);
-      return { x, y, z };
-    }
-
-    // Cloud layer
-    const cloudCount = 70000;
-    const maxCloudRadius = 10.0;
-    const minCloudRadius = 4.0;
-
-    for (let i = 0; i < cloudCount; i++) {
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2 * Math.PI * u;
-      const phi = Math.acos(2 * v - 1);
-      const distanceNormal = Math.random();
-      const r = minCloudRadius + (maxCloudRadius - minCloudRadius) * Math.pow(distanceNormal, 1.8);
-      const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta);
-      const z = r * Math.cos(phi);
-      vertices.push(x, y, z);
-    }
-
-    // Eyeball layer
-    const eyeballCount = 12000;
-    const eyeRadius = 4.0;
-    for (let i = 0; i < eyeballCount; i++) {
-      let p = randomPointOnSphere(eyeRadius);
-      const cutoffNoise = (Math.random() * 0.2) - 0.1;
-      if (p.z > 3.2 + cutoffNoise) continue;
-      vertices.push(p.x, p.y, p.z);
-    }
-
-    // Iris layer
-    const irisCount = 8000;
-    const irisRadius = 2.3;
-    const pupilRadius = 0.8;
-    for (let i = 0; i < irisCount; i++) {
-      const r = Math.sqrt(Math.random()) * irisRadius;
-      const theta = Math.random() * 2 * Math.PI;
-      if (r < pupilRadius) continue;
-      const x = r * Math.cos(theta);
-      const y = r * Math.sin(theta);
-      const z = 3.5 - (r * 0.2);
-      vertices.push(x, y, z);
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-
-    const material = new THREE.PointsMaterial({
-      color: 0x18181B,
-      size: 0.04,
-      sizeAttenuation: true,
-      transparent: true,
-      opacity: 0.15,
-      depthWrite: false
-    });
-
-    const pointCloud = new THREE.Points(geometry, material);
-    scene.add(pointCloud);
-
-    // Rotation center angle: 57 degrees in radians
-    const baseAngle = 57 * (Math.PI / 180);
-
-    // Smooth oscillating animation with easing
-    let time = 0;
-    function animate() {
-      requestAnimationFrame(animate);
-      time += 0.002;
-      // Smooth oscillation around the base angle (~9 degrees each way)
-      pointCloud.rotation.y = baseAngle + Math.sin(time) * 0.15;
-      renderer.render(scene, camera);
-    }
-    animate();
   </script>
 </body>
 </html>
