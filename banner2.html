@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banner Generator</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #f0f0f0; 
+            font-family: sans-serif;
+        }
+        canvas { display: block; }
+
+        /* --- VISUAL AID OVERLAY --- */
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to 3D */
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* The clear window in the middle - 1128x191 aspect ratio */
+        #crop-frame {
+            width: 90%;
+            max-width: 1128px;
+            aspect-ratio: 1128 / 191;
+            border: 2px dashed rgba(255, 0, 0, 0.5);
+            border-radius: 4px;
+            box-shadow: 0 0 0 9999px rgba(255, 255, 255, 0.7); /* Dim the outside */
+            position: relative;
+        }
+        
+        #crop-label {
+            position: absolute;
+            top: -25px;
+            left: 10px;
+            color: red;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- CONTROLS --- */
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 10;
+            width: 320px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+
+        #controls h3 {
+            margin: 0 0 10px 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #000;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+        }
+
+        .sub-header {
+            font-size: 11px;
+            font-weight: bold;
+            color: #000;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            background: #eee;
+            padding: 5px;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
+        .control-group {
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-size: 10px;
+            color: #333;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .control-group .value {
+            color: #000;
+            font-weight: bold;
+        }
+
+        /* BUTTONS */
+        .action-btn {
+            padding: 12px;
+            border: 2px solid #000;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        #captureBtn {
+            background: #000;
+            color: white;
+            margin-top: 20px;
+        }
+        #captureBtn:hover { background: #333; border-color: #333; }
+
+        #toggleTextBtn {
+            background: white;
+            color: black;
+        }
+        #toggleTextBtn:hover { background: #eee; }
+
+        /* Toggle Controls Button */
+        #toggleControlsBtn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            padding: 10px 16px;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #toggleControlsBtn:hover { background: #333; }
+
+        #controls.hidden {
+            display: none;
+        }
+
+        #controls:not(.hidden) ~ #toggleControlsBtn {
+            right: 360px;
+        }
+
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+<!-- Visual Crop Overlay -->
+<div id="overlay">
+    <div id="crop-frame">
+        <div id="crop-label">Export Area (1128 × 191)</div>
+    </div>
+</div>
+
+<button id="toggleControlsBtn">Hide Controls</button>
+<div id="controls">
+    <button id="toggleTextBtn" class="action-btn">Switch Phrase</button>
+
+    <h3>Global Position (Drag All)</h3>
+    <div class="control-group">
+        <label>Global X <span class="value" id="globalXVal">0</span></label>
+        <input type="range" id="globalX" min="-50" max="50" step="0.5" value="0">
+    </div>
+    <div class="control-group">
+        <label>Global Y <span class="value" id="globalYVal">0</span></label>
+        <input type="range" id="globalY" min="-30" max="30" step="0.5" value="0">
+    </div>
+
+    <h3>Style Settings</h3>
+    <div class="control-group">
+        <label>Text Size <span class="value" id="textSizeVal">0.03</span></label>
+        <input type="range" id="textSize" min="0.01" max="0.08" step="0.005" value="0.03">
+    </div>
+    <div class="control-group">
+        <label>Point Size <span class="value" id="ptSizeVal">0.04</span></label>
+        <input type="range" id="ptSize" min="0.01" max="0.2" step="0.005" value="0.04">
+    </div>
+    <div class="control-group">
+        <label>Block Thickness <span class="value" id="depthVal">2.0</span></label>
+        <input type="range" id="depth" min="0.1" max="8.0" step="0.1" value="2.0">
+    </div>
+    <div class="control-group">
+        <label>Scatter/Noise <span class="value" id="scatterVal">0.05</span></label>
+        <input type="range" id="scatter" min="0" max="0.5" step="0.01" value="0.05">
+    </div>
+    <div class="control-group">
+        <label>Text Density <span class="value" id="textDensVal">0.3</span></label>
+        <input type="range" id="textDens" min="0.05" max="1.0" step="0.05" value="0.3">
+    </div>
+
+    <h3>Ambient Cloud</h3>
+    <div class="control-group">
+        <label>Cloud Density <span class="value" id="cloudDensVal">60000</span></label>
+        <input type="range" id="cloudDens" min="0" max="150000" step="5000" value="60000">
+    </div>
+    <div class="control-group">
+        <label>Cloud Opacity <span class="value" id="cloudOpacityVal">0.4</span></label>
+        <input type="range" id="cloudOpacity" min="0.05" max="1.0" step="0.05" value="0.4">
+    </div>
+    <div class="control-group">
+        <label>Cloud Width (X) <span class="value" id="cloudWidthVal">50</span></label>
+        <input type="range" id="cloudWidth" min="10" max="100" step="1" value="50">
+    </div>
+    <div class="control-group">
+        <label>Cloud Height (Y) <span class="value" id="cloudHeightVal">8</span></label>
+        <input type="range" id="cloudHeight" min="2" max="30" step="1" value="8">
+    </div>
+    <div class="control-group">
+        <label>Cloud Depth (Z) <span class="value" id="cloudDepthVal">15</span></label>
+        <input type="range" id="cloudDepth" min="2" max="40" step="1" value="15">
+    </div>
+    <div class="control-group">
+        <label>Fade Softness <span class="value" id="fadeSoftVal">0.3</span></label>
+        <input type="range" id="fadeSoft" min="0.0" max="1.0" step="0.05" value="0.3">
+    </div>
+
+    <h3>Individual Words</h3>
+    <div id="wordControlsContainer">
+        <!-- Dynamic controls inserted here -->
+    </div>
+
+    <div class="control-group">
+        <label>Export Quality <span class="value" id="exportQualVal">4x</span></label>
+        <input type="range" id="exportQual" min="1" max="4" step="1" value="4">
+    </div>
+    <button id="captureBtn" class="action-btn">Capture Banner</button>
+</div>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ==========================================
+    // 1. SCENE SETUP
+    // ==========================================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+    scene.fog = new THREE.FogExp2(0xffffff, 0.02);
+
+    // Create a Group to hold everything (words + cloud)
+    // This allows us to move "Everything" with Global X/Y
+    const mainGroup = new THREE.Group();
+    scene.add(mainGroup);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 18; 
+    camera.position.y = 0;
+
+    const renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        alpha: true,               
+        preserveDrawingBuffer: true 
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // ==========================================
+    // 2. DATA & CONFIG
+    // ==========================================
+    
+    const params = {
+        pointSize: 0.04,
+        blockDepth: 2.0,
+        scatter: 0.05,
+        textScale: 0.03,
+        pointsPerPixel: 6,
+        textDensity: 0.3,  // 0-1, higher = more points
+
+        cloudCount: 60000,
+        cloudWidth: 50,
+        cloudHeight: 8,
+        cloudDepth: 15,
+        cloudOpacity: 0.4,
+        fadeSoftness: 0.3,
+
+        globalX: 0,
+        globalY: 0
+    };
+
+    // Define the two phrase configurations
+    const phraseConfig1 = [
+        { text: "Inspection", x: 0, y: 2.5, rotation: 0, obj: null, coords: [] },
+        { text: "Intelligence.", x: 0, y: -2.5, rotation: 0, obj: null, coords: [] }
+    ];
+
+    const phraseConfig2 = [
+        { text: "AI", x: -6, y: 2.0, rotation: 0, obj: null, coords: [] },
+        { text: "inspections", x: 2, y: 2.0, rotation: 0, obj: null, coords: [] },
+        { text: "for", x: -3, y: -2.0, rotation: 0, obj: null, coords: [] },
+        { text: "STRs", x: 3, y: -2.0, rotation: 0, obj: null, coords: [] }
+    ];
+
+    // State
+    let currentPhraseIndex = 0; // 0 = Inspection, 1 = AI
+    let activeWords = phraseConfig1; // Start with config 1
+
+    // Materials
+    const textMaterial = new THREE.PointsMaterial({
+        color: 0x000000,
+        size: params.pointSize,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.95
+    });
+
+    const cloudMaterial = new THREE.PointsMaterial({
+        color: 0x000000,
+        size: params.pointSize * 1.2,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: params.cloudOpacity
+    });
+
+    let ambientCloudObj = null;
+
+    // ==========================================
+    // 3. TEXT PROCESSING
+    // ==========================================
+
+    function scanText(text) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const fontHeight = 200;
+        const font = `900 ${fontHeight}px "Arial Black", "Arial", sans-serif`;
+        
+        ctx.font = font;
+        const metrics = ctx.measureText(text);
+        const width = Math.ceil(metrics.width);
+        const height = Math.ceil(fontHeight * 1.4);
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.fillStyle = "black";
+        ctx.font = font;
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.fillText(text, width / 2, height / 2);
+
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+        const coords = [];
+
+        for (let y = 0; y < height; y += 2) {
+            for (let x = 0; x < width; x += 2) {
+                if (data[(y * width + x) * 4 + 3] > 128) {
+                    coords.push({ x: (x - width / 2), y: -(y - height / 2) });
+                }
+            }
+        }
+        return coords;
+    }
+
+    // Pre-scan both configs
+    phraseConfig1.forEach(w => w.coords = scanText(w.text));
+    phraseConfig2.forEach(w => w.coords = scanText(w.text));
+
+    // ==========================================
+    // 4. GENERATION
+    // ==========================================
+
+    function buildWordObject(wordData) {
+        const vertices = [];
+
+        wordData.coords.forEach(coord => {
+            if(Math.random() > params.textDensity) return;
+
+            for(let i=0; i < params.pointsPerPixel; i++) {
+                let x = coord.x * params.textScale;
+                let y = coord.y * params.textScale;
+                let z = (Math.random() - 0.5) * params.blockDepth;
+
+                x += (Math.random() - 0.5) * params.scatter;
+                y += (Math.random() - 0.5) * params.scatter;
+                z += (Math.random() - 0.5) * params.scatter;
+
+                vertices.push(x, y, z);
+            }
+        });
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        
+        if (wordData.obj) mainGroup.remove(wordData.obj);
+
+        const points = new THREE.Points(geometry, textMaterial);
+        points.position.set(wordData.x, wordData.y, 0);
+        points.rotation.y = wordData.rotation * (Math.PI / 180); // Convert degrees to radians
+
+        wordData.obj = points;
+        mainGroup.add(points);
+    }
+
+    function buildAmbientCloud() {
+        if (ambientCloudObj) mainGroup.remove(ambientCloudObj);
+
+        const vertices = [];
+        const count = params.cloudCount;
+        const halfW = params.cloudWidth / 2;
+        const halfH = params.cloudHeight / 2;
+        const halfD = params.cloudDepth / 2;
+        const softness = params.fadeSoftness;
+
+        for (let i = 0; i < count; i++) {
+            // Random position in rectangular volume
+            let x = (Math.random() - 0.5) * params.cloudWidth;
+            let y = (Math.random() - 0.5) * params.cloudHeight;
+            let z = (Math.random() - 0.5) * params.cloudDepth;
+
+            // Calculate rectangular fade (0 at edges, 1 at center)
+            const edgeX = 1 - Math.abs(x) / halfW;
+            const edgeY = 1 - Math.abs(y) / halfH;
+
+            // Softness controls how gradual the fade is
+            // Higher softness = more gradual fade from center
+            const fadeX = Math.pow(edgeX, softness + 0.1);
+            const fadeY = Math.pow(edgeY, softness + 0.1);
+
+            // Combined probability (rectangular fade)
+            const prob = fadeX * fadeY;
+
+            if (Math.random() > prob) continue;
+
+            vertices.push(x, y, z);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        ambientCloudObj = new THREE.Points(geometry, cloudMaterial);
+        mainGroup.add(ambientCloudObj);
+    }
+
+    // ==========================================
+    // 5. DYNAMIC UI GENERATION
+    // ==========================================
+
+    function renderWordControls() {
+        const container = document.getElementById('wordControlsContainer');
+        container.innerHTML = ''; // Clear existing
+
+        activeWords.forEach((word, index) => {
+            const wrapper = document.createElement('div');
+            
+            const header = document.createElement('div');
+            header.className = 'sub-header';
+            header.innerText = `Word: "${word.text}"`;
+            wrapper.appendChild(header);
+
+            // X Control
+            const groupX = document.createElement('div');
+            groupX.className = 'control-group';
+            groupX.innerHTML = `<label>Pos X <span class="value" id="w${index}xVal">${word.x}</span></label>`;
+            const inputX = document.createElement('input');
+            inputX.type = 'range';
+            inputX.min = -50; inputX.max = 50; inputX.step = 0.5; inputX.value = word.x;
+            
+            inputX.addEventListener('input', (e) => {
+                const v = parseFloat(e.target.value);
+                word.x = v;
+                document.getElementById(`w${index}xVal`).innerText = v;
+                if(word.obj) word.obj.position.x = v;
+            });
+            groupX.appendChild(inputX);
+            wrapper.appendChild(groupX);
+
+            // Y Control
+            const groupY = document.createElement('div');
+            groupY.className = 'control-group';
+            groupY.innerHTML = `<label>Pos Y <span class="value" id="w${index}yVal">${word.y}</span></label>`;
+            const inputY = document.createElement('input');
+            inputY.type = 'range';
+            inputY.min = -30; inputY.max = 30; inputY.step = 0.5; inputY.value = word.y;
+
+            inputY.addEventListener('input', (e) => {
+                const v = parseFloat(e.target.value);
+                word.y = v;
+                document.getElementById(`w${index}yVal`).innerText = v;
+                if(word.obj) word.obj.position.y = v;
+            });
+            groupY.appendChild(inputY);
+            wrapper.appendChild(groupY);
+
+            // Rotation Control (Y-axis, dreidel spin)
+            const groupRot = document.createElement('div');
+            groupRot.className = 'control-group';
+            groupRot.innerHTML = `<label>Rotation <span class="value" id="w${index}rotVal">${word.rotation}°</span></label>`;
+            const inputRot = document.createElement('input');
+            inputRot.type = 'range';
+            inputRot.min = -90; inputRot.max = 90; inputRot.step = 1; inputRot.value = word.rotation;
+
+            inputRot.addEventListener('input', (e) => {
+                const v = parseFloat(e.target.value);
+                word.rotation = v;
+                document.getElementById(`w${index}rotVal`).innerText = v + '°';
+                if(word.obj) word.obj.rotation.y = v * (Math.PI / 180);
+            });
+            groupRot.appendChild(inputRot);
+            wrapper.appendChild(groupRot);
+
+            container.appendChild(wrapper);
+        });
+    }
+
+    function rebuildScene() {
+        // Clear current words from group
+        activeWords.forEach(w => { if(w.obj) mainGroup.remove(w.obj); });
+        
+        // Rebuild
+        activeWords.forEach(w => buildWordObject(w));
+        buildAmbientCloud();
+        renderWordControls();
+    }
+
+    // ==========================================
+    // 6. EVENT LISTENERS
+    // ==========================================
+
+    function updateVal(id, val) { document.getElementById(id).textContent = val; }
+
+    // Toggle Controls Panel
+    document.getElementById('toggleControlsBtn').addEventListener('click', () => {
+        const controls = document.getElementById('controls');
+        const btn = document.getElementById('toggleControlsBtn');
+        controls.classList.toggle('hidden');
+        btn.textContent = controls.classList.contains('hidden') ? 'Show Controls' : 'Hide Controls';
+    });
+
+    // Toggle Phrase
+    document.getElementById('toggleTextBtn').addEventListener('click', () => {
+        // Remove old objects
+        activeWords.forEach(w => { if(w.obj) mainGroup.remove(w.obj); });
+
+        // Switch Config
+        currentPhraseIndex = currentPhraseIndex === 0 ? 1 : 0;
+        activeWords = currentPhraseIndex === 0 ? phraseConfig1 : phraseConfig2;
+
+        // Rebuild
+        rebuildScene();
+    });
+
+    // Global Positioning
+    document.getElementById('globalX').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        params.globalX = v;
+        updateVal('globalXVal', v);
+        mainGroup.position.x = v;
+    });
+
+    document.getElementById('globalY').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        params.globalY = v;
+        updateVal('globalYVal', v);
+        mainGroup.position.y = v;
+    });
+
+    // Aesthetics
+    document.getElementById('textSize').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        params.textScale = v;
+        updateVal('textSizeVal', v);
+        activeWords.forEach(w => buildWordObject(w));
+    });
+
+    document.getElementById('ptSize').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        params.pointSize = v;
+        textMaterial.size = v;
+        cloudMaterial.size = v * 1.2;
+        updateVal('ptSizeVal', v);
+    });
+
+    document.getElementById('depth').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        params.blockDepth = v;
+        updateVal('depthVal', v);
+        activeWords.forEach(w => buildWordObject(w));
+    });
+
+    document.getElementById('scatter').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        params.scatter = v;
+        updateVal('scatterVal', v);
+        activeWords.forEach(w => buildWordObject(w));
+    });
+
+    document.getElementById('textDens').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        params.textDensity = v;
+        updateVal('textDensVal', v);
+        activeWords.forEach(w => buildWordObject(w));
+    });
+
+    document.getElementById('cloudDens').addEventListener('input', (e) => {
+        params.cloudCount = parseInt(e.target.value);
+        updateVal('cloudDensVal', params.cloudCount);
+        buildAmbientCloud();
+    });
+
+    document.getElementById('cloudOpacity').addEventListener('input', (e) => {
+        params.cloudOpacity = parseFloat(e.target.value);
+        cloudMaterial.opacity = params.cloudOpacity;
+        updateVal('cloudOpacityVal', params.cloudOpacity);
+    });
+
+    document.getElementById('cloudWidth').addEventListener('input', (e) => {
+        params.cloudWidth = parseFloat(e.target.value);
+        updateVal('cloudWidthVal', params.cloudWidth);
+        buildAmbientCloud();
+    });
+
+    document.getElementById('cloudHeight').addEventListener('input', (e) => {
+        params.cloudHeight = parseFloat(e.target.value);
+        updateVal('cloudHeightVal', params.cloudHeight);
+        buildAmbientCloud();
+    });
+
+    document.getElementById('cloudDepth').addEventListener('input', (e) => {
+        params.cloudDepth = parseFloat(e.target.value);
+        updateVal('cloudDepthVal', params.cloudDepth);
+        buildAmbientCloud();
+    });
+
+    document.getElementById('fadeSoft').addEventListener('input', (e) => {
+        params.fadeSoftness = parseFloat(e.target.value);
+        updateVal('fadeSoftVal', params.fadeSoftness);
+        buildAmbientCloud();
+    });
+
+    // ==========================================
+    // 7. CAPTURE LOGIC
+    // ==========================================
+    let exportQuality = 4;
+
+    document.getElementById('exportQual').addEventListener('input', (e) => {
+        exportQuality = parseInt(e.target.value);
+        updateVal('exportQualVal', exportQuality + 'x');
+    });
+
+    document.getElementById('captureBtn').addEventListener('click', () => {
+        // Get crop frame dimensions at current screen size
+        const cropFrame = document.getElementById('crop-frame');
+        const frameRect = cropFrame.getBoundingClientRect();
+
+        // Calculate high-res export dimensions
+        const exportWidth = Math.round(frameRect.width * exportQuality);
+        const exportHeight = Math.round(frameRect.height * exportQuality);
+
+        // Store original size
+        const originalWidth = window.innerWidth;
+        const originalHeight = window.innerHeight;
+
+        // Temporarily resize renderer to high-res
+        const scaleFactor = exportQuality;
+        renderer.setSize(originalWidth * scaleFactor, originalHeight * scaleFactor);
+        renderer.setPixelRatio(1); // Use 1:1 for clean capture
+
+        // Render at high resolution
+        renderer.render(scene, camera);
+
+        // Calculate scaled crop region
+        const scaleX = (originalWidth * scaleFactor) / originalWidth;
+        const scaleY = (originalHeight * scaleFactor) / originalHeight;
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = exportWidth;
+        tempCanvas.height = exportHeight;
+        const ctx = tempCanvas.getContext('2d');
+
+        // Draw cropped region from high-res render
+        ctx.drawImage(
+            renderer.domElement,
+            frameRect.left * scaleFactor,
+            frameRect.top * scaleFactor,
+            frameRect.width * scaleFactor,
+            frameRect.height * scaleFactor,
+            0, 0, exportWidth, exportHeight
+        );
+
+        // Restore original renderer size
+        renderer.setSize(originalWidth, originalHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        const link = document.createElement('a');
+        link.download = `Banner-Export-${exportWidth}x${exportHeight}.png`;
+        link.href = tempCanvas.toDataURL('image/png');
+        link.click();
+    });
+
+    // ==========================================
+    // 8. INIT & LOOP
+    // ==========================================
+    
+    // Initial Build
+    rebuildScene();
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // Handle Resize (Update overlay math implicitly via CSS vw, update 3D)
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+</script>
+</body>
+</html>

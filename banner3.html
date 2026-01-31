@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LinkedIn Banner Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;500;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Raleway:wght@300;400;500;600;700&family=Nunito:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&family=Urbanist:wght@300;400;500;600;700&family=Lexend:wght@300;400;500;600;700&family=Figtree:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700&family=Satoshi:wght@300;400;500;700&family=General+Sans:wght@300;400;500;600;700&family=Switzer:wght@300;400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700&family=Clash+Display:wght@400;500;600;700&family=Archivo:wght@300;400;500;600;700&family=Barlow:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600;700&family=Karla:wght@300;400;500;600;700&family=Josefin+Sans:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&family=Libre+Franklin:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Mulish:wght@300;400;500;600;700&family=Overpass:wght@300;400;500;600;700&family=Titillium+Web:wght@300;400;600;700&family=Exo+2:wght@300;400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&family=Hind:wght@300;400;500;600;700&family=Asap:wght@300;400;500;600;700&family=Cairo:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Noto+Sans:wght@300;400;500;600;700&family=PT+Sans:wght@400;700&family=Oxygen:wght@300;400;700&family=Ubuntu:wght@300;400;500;700&family=Playfair+Display:wght@400;500;600;700&family=Merriweather:wght@300;400;700&family=Lora:wght@400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Crimson+Text:wght@400;600;700&family=Libre+Baskerville:wght@400;700&family=EB+Garamond:wght@400;500;600;700&family=Source+Serif+4:wght@300;400;500;600;700&family=Spectral:wght@300;400;500;600;700&family=DM+Serif+Display&family=Fraunces:wght@300;400;500;600;700&family=Bitter:wght@300;400;500;600;700&family=Arvo:wght@400;700&family=Roboto+Slab:wght@300;400;500;600;700&family=Zilla+Slab:wght@300;400;500;600;700&family=Rokkitt:wght@300;400;500;600;700&family=Cardo&family=Newsreader:wght@300;400;500;600;700&family=Instrument+Serif&family=JetBrains+Mono:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500;600;700&family=Source+Code+Pro:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Roboto+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      padding: 30px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .banner-wrapper {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    .banner {
+      width: 1128px;
+      height: 191px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed #ccc;
+    }
+
+    .text {
+      transition: all 0.2s ease;
+    }
+
+    .controls {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    select, input[type="range"], input[type="color"], input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    select {
+      cursor: pointer;
+      background: white;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      height: 36px;
+      cursor: pointer;
+    }
+
+    input[type="color"] {
+      height: 42px;
+      padding: 4px;
+      cursor: pointer;
+    }
+
+    .value-display {
+      font-size: 12px;
+      color: #999;
+      text-align: right;
+    }
+
+    .export-btn {
+      grid-column: 1 / -1;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 500;
+      background: #000;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .export-btn:hover {
+      background: #333;
+    }
+
+    optgroup {
+      font-weight: 600;
+      color: #333;
+    }
+
+    option {
+      font-weight: 400;
+      padding: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LinkedIn Banner Generator</h1>
+
+    <div class="banner-wrapper">
+      <div class="banner" id="banner">
+        <span class="text" id="text">inspection intelligence for STRs.</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Font Family</label>
+        <select id="fontFamily">
+          <optgroup label="Modern Sans-Serif">
+            <option value="'Inter'">Inter</option>
+            <option value="'DM Sans'">DM Sans</option>
+            <option value="'Outfit'">Outfit</option>
+            <option value="'Space Grotesk'">Space Grotesk</option>
+            <option value="'Poppins'">Poppins</option>
+            <option value="'Manrope'">Manrope</option>
+            <option value="'Plus Jakarta Sans'">Plus Jakarta Sans</option>
+            <option value="'Sora'">Sora</option>
+            <option value="'Urbanist'">Urbanist</option>
+            <option value="'Lexend'">Lexend</option>
+            <option value="'Figtree'">Figtree</option>
+            <option value="'Work Sans'">Work Sans</option>
+          </optgroup>
+          <optgroup label="Classic Sans-Serif">
+            <option value="'Roboto'">Roboto</option>
+            <option value="'Open Sans'">Open Sans</option>
+            <option value="'Lato'">Lato</option>
+            <option value="'Montserrat'">Montserrat</option>
+            <option value="'Raleway'">Raleway</option>
+            <option value="'Nunito'">Nunito</option>
+            <option value="'Source Sans 3'">Source Sans</option>
+            <option value="'IBM Plex Sans'">IBM Plex Sans</option>
+            <option value="'Libre Franklin'">Libre Franklin</option>
+            <option value="'Mulish'">Mulish</option>
+          </optgroup>
+          <optgroup label="Geometric / Technical">
+            <option value="'Archivo'">Archivo</option>
+            <option value="'Barlow'">Barlow</option>
+            <option value="'Rubik'">Rubik</option>
+            <option value="'Karla'">Karla</option>
+            <option value="'Overpass'">Overpass</option>
+            <option value="'Titillium Web'">Titillium Web</option>
+            <option value="'Exo 2'">Exo 2</option>
+            <option value="'Fira Sans'">Fira Sans</option>
+            <option value="'Hind'">Hind</option>
+            <option value="'Asap'">Asap</option>
+          </optgroup>
+          <optgroup label="Friendly / Rounded">
+            <option value="'Quicksand'">Quicksand</option>
+            <option value="'Josefin Sans'">Josefin Sans</option>
+            <option value="'Nunito'">Nunito</option>
+            <option value="'Varela Round'">Varela Round</option>
+          </optgroup>
+          <optgroup label="International">
+            <option value="'Noto Sans'">Noto Sans</option>
+            <option value="'Cairo'">Cairo</option>
+            <option value="'Sarabun'">Sarabun</option>
+            <option value="'PT Sans'">PT Sans</option>
+            <option value="'Ubuntu'">Ubuntu</option>
+            <option value="'Oxygen'">Oxygen</option>
+          </optgroup>
+          <optgroup label="Elegant Serif">
+            <option value="'Playfair Display'">Playfair Display</option>
+            <option value="'Merriweather'">Merriweather</option>
+            <option value="'Lora'">Lora</option>
+            <option value="'Cormorant Garamond'">Cormorant Garamond</option>
+            <option value="'Crimson Text'">Crimson Text</option>
+            <option value="'Libre Baskerville'">Libre Baskerville</option>
+            <option value="'EB Garamond'">EB Garamond</option>
+            <option value="'Source Serif 4'">Source Serif</option>
+            <option value="'Spectral'">Spectral</option>
+            <option value="'Newsreader'">Newsreader</option>
+            <option value="'Instrument Serif'">Instrument Serif</option>
+          </optgroup>
+          <optgroup label="Display Serif">
+            <option value="'DM Serif Display'">DM Serif Display</option>
+            <option value="'Fraunces'">Fraunces</option>
+            <option value="'Bitter'">Bitter</option>
+          </optgroup>
+          <optgroup label="Slab Serif">
+            <option value="'Roboto Slab'">Roboto Slab</option>
+            <option value="'Arvo'">Arvo</option>
+            <option value="'Zilla Slab'">Zilla Slab</option>
+            <option value="'Rokkitt'">Rokkitt</option>
+            <option value="'Cardo'">Cardo</option>
+          </optgroup>
+          <optgroup label="Monospace">
+            <option value="'JetBrains Mono'">JetBrains Mono</option>
+            <option value="'Fira Code'">Fira Code</option>
+            <option value="'Source Code Pro'">Source Code Pro</option>
+            <option value="'Space Mono'">Space Mono</option>
+            <option value="'IBM Plex Mono'">IBM Plex Mono</option>
+            <option value="'Roboto Mono'">Roboto Mono</option>
+          </optgroup>
+          <optgroup label="System Fonts">
+            <option value="system-ui">System UI</option>
+            <option value="'Segoe UI'">Segoe UI (Windows)</option>
+            <option value="'-apple-system'">San Francisco (Mac)</option>
+            <option value="'Helvetica Neue'">Helvetica Neue</option>
+            <option value="Arial">Arial</option>
+            <option value="Georgia">Georgia</option>
+            <option value="'Times New Roman'">Times New Roman</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Font Weight</label>
+        <select id="fontWeight">
+          <option value="300">Light (300)</option>
+          <option value="400" selected>Regular (400)</option>
+          <option value="500">Medium (500)</option>
+          <option value="600">Semi-Bold (600)</option>
+          <option value="700">Bold (700)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Font Size</label>
+        <input type="range" id="fontSize" min="10" max="40" value="18">
+        <span class="value-display" id="fontSizeValue">18px</span>
+      </div>
+
+      <div class="control-group">
+        <label>Letter Spacing</label>
+        <input type="range" id="letterSpacing" min="0" max="10" step="0.5" value="1.5">
+        <span class="value-display" id="letterSpacingValue">1.5px</span>
+      </div>
+
+      <div class="control-group">
+        <label>Text Color</label>
+        <input type="color" id="textColor" value="#1a1a1a">
+      </div>
+
+      <div class="control-group">
+        <label>Opacity</label>
+        <input type="range" id="opacity" min="0.3" max="1" step="0.05" value="0.85">
+        <span class="value-display" id="opacityValue">85%</span>
+      </div>
+
+      <div class="control-group">
+        <label>Text Transform</label>
+        <select id="textTransform">
+          <option value="none" selected>As Written</option>
+          <option value="uppercase">UPPERCASE</option>
+          <option value="lowercase">lowercase</option>
+          <option value="capitalize">Capitalize</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Font Style</label>
+        <select id="fontStyle">
+          <option value="normal" selected>Normal</option>
+          <option value="italic">Italic</option>
+        </select>
+      </div>
+
+      <button class="export-btn" onclick="exportBanner()">Export PNG</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    const text = document.getElementById('text');
+    const controls = {
+      fontFamily: document.getElementById('fontFamily'),
+      fontWeight: document.getElementById('fontWeight'),
+      fontSize: document.getElementById('fontSize'),
+      letterSpacing: document.getElementById('letterSpacing'),
+      textColor: document.getElementById('textColor'),
+      opacity: document.getElementById('opacity'),
+      textTransform: document.getElementById('textTransform'),
+      fontStyle: document.getElementById('fontStyle')
+    };
+
+    function updateText() {
+      text.style.fontFamily = controls.fontFamily.value + ', sans-serif';
+      text.style.fontWeight = controls.fontWeight.value;
+      text.style.fontSize = controls.fontSize.value + 'px';
+      text.style.letterSpacing = controls.letterSpacing.value + 'px';
+      text.style.color = controls.textColor.value;
+      text.style.opacity = controls.opacity.value;
+      text.style.textTransform = controls.textTransform.value;
+      text.style.fontStyle = controls.fontStyle.value;
+
+      document.getElementById('fontSizeValue').textContent = controls.fontSize.value + 'px';
+      document.getElementById('letterSpacingValue').textContent = controls.letterSpacing.value + 'px';
+      document.getElementById('opacityValue').textContent = Math.round(controls.opacity.value * 100) + '%';
+    }
+
+    Object.values(controls).forEach(control => {
+      control.addEventListener('input', updateText);
+      control.addEventListener('change', updateText);
+    });
+
+    updateText();
+
+    function exportBanner() {
+      const banner = document.getElementById('banner');
+      banner.style.border = 'none';
+
+      html2canvas(banner, {
+        backgroundColor: null,
+        scale: 2
+      }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'linkedin-banner.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        banner.style.border = '1px dashed #ccc';
+      });
+    }
+  </script>
+</body>
+</html>

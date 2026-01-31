@@ -204,90 +204,143 @@
       const [activeCompany, setActiveCompany] = useState(null);
       const sourcesContainerRef = useRef(null);
 
-      // Text positions
+      // Text positions for featured callouts
       const calloutPositions = {
         'Vacasa': { x: -126, y: -170 },
         'Evolve': { x: -368, y: -205 },
-        'AvantStay': { x: 120, y: -113 },
+        'AvantStay': { x: 174, y: -102 },
         'TurnKey': { x: -393, y: -116 },
-        'Grand Welcome': { x: 49, y: -55 },
-        'Blueground': { x: 70, y: -145 },
+        'Grand Welcome': { x: 79, y: -58 },
+        'Blueground': { x: -60, y: -160 },
+        'Sonder': { x: -130, y: -198 },
+        'Casago': { x: -175, y: -86 },
       };
 
-      // Line endpoint positions
+      // Line endpoint positions for featured callouts
       const lineEndpoints = {
         'Vacasa': { x: -22, y: -158 },
         'Evolve': { x: -286, y: -195 },
-        'AvantStay': { x: 201, y: -103 },
+        'AvantStay': { x: 184, y: -84 },
         'TurnKey': { x: -303, y: -106 },
         'Grand Welcome': { x: 147, y: -47 },
-        'Blueground': { x: 149, y: -137 },
+        'Blueground': { x: -21, y: -138 },
+        'Sonder': { x: -42, y: -180 },
+        'Casago': { x: -81, y: -71 },
       };
 
       const companies = [
         {
+          name: 'Casago',
+          color: '#2d8659',
+          status: 'active',
+          funding: '$130M',
+          model: 'Franchise',
+          note: 'Founded 2001',
+          dataPoints: [
+            { year: 2019, properties: 1000, label: 'Launched franchise model (founded 2001)', source: 'Rental Scale-Up', url: 'https://www.rentalscaleup.com/vacation-rental-franchise-brand-casago-doubles-footprint/' },
+            { year: 2023, properties: 7000, label: '7,000+ properties, 51 destinations', source: 'Rental Scale-Up', url: 'https://www.rentalscaleup.com/vacation-rental-franchise-brand-casago-doubles-footprint/' },
+            { year: 2025, properties: 45000, label: '45,000 (Vacasa acquisition)', source: 'Phocuswire', url: 'https://www.phocuswire.com/str-management-casago-acquires-vacasa', featured: true, callout: 'Acquires Vacasa for $130M → #1 in NA' },
+          ]
+        },
+        {
           name: 'Vacasa',
           color: '#1a1a1a',
+          status: 'acquired',
+          funding: '$970M',
+          model: 'Full-service',
           dataPoints: [
-            { year: 2009, properties: 5, label: 'Founded with 5 properties', source: 'TechCrunch', url: 'https://techcrunch.com/2017/04/20/vacasa-yield-management-2-0-portland-vacation-rentals/' },
+            { year: 2009, properties: 5, label: 'Founded with 5 properties', source: 'Vacasa', url: 'https://www.vacasa.com/news/vacasa-celebrates-10th-anniversary' },
             { year: 2014, properties: 1200, label: '1,200 properties', source: 'VRM Intel', url: 'https://vrmintel.com/vacasa-founders-eric-breon-cliff-johnson-inside-look-vacasas-fast-growth-lessons-learned-along-way/' },
             { year: 2017, properties: 5200, label: '5,200 properties', source: 'TechCrunch', url: 'https://techcrunch.com/2017/04/20/vacasa-yield-management-2-0-portland-vacation-rentals/' },
-            { year: 2018, properties: 10600, label: '10,600 properties (Oasis acquisition)', source: 'GeekWire', url: 'https://www.geekwire.com/2018/vacasa-jumps-vacation-home-sale-process-new-network-connecting-buyers-sellers-agents/' },
-            { year: 2019, properties: 23000, label: '23,000+ (Wyndham acquisition)', source: 'SEC Filing', url: 'https://www.sec.gov/Archives/edgar/data/1361658/000136165819000164/wvrnasalepressrelease.htm', featured: true, callout: 'SEC Filing: Wyndham VR deal adds 9,000 homes' },
-            { year: 2021, properties: 35000, label: '35,000 properties (IPO)', source: 'SEC Filing', url: 'https://www.sec.gov/Archives/edgar/data/1874944/000110465921153954/vcsa-20211227xs1.htm' },
+            { year: 2018, properties: 10600, label: '10,600 (Oasis acquisition)', source: 'GeekWire', url: 'https://www.geekwire.com/2018/vacasa-jumps-vacation-home-sale-process-new-network-connecting-buyers-sellers-agents/' },
+            { year: 2019, properties: 23000, label: '23,000+ (Wyndham acquisition)', source: 'SEC Filing', url: 'https://www.sec.gov/Archives/edgar/data/1361658/000136165819000164/wvrnasalepressrelease.htm', featured: true, callout: 'Wyndham deal adds 9,000 homes' },
+            { year: 2021, properties: 35000, label: '35,000 (IPO at $4.5B)', source: 'SEC Filing', url: 'https://www.sec.gov/Archives/edgar/data/1874944/000110465921153954/vcsa-20211227xs1.htm' },
           ]
         },
         {
           name: 'Evolve',
           color: '#4a7c59',
+          status: 'active',
+          funding: '$235M',
+          model: 'Asset-light (10% fee)',
           dataPoints: [
             { year: 2011, properties: 21, label: 'Beta launch: 21 homes', source: 'VRM Intel', url: 'https://vrmintel.com/how-brian-egan-built-evolve-into-a-profitable-short-term-rental-business-whats-next-for-vacation-rentals/' },
-            { year: 2013, properties: 1000, label: '1,000+ properties', source: 'VRM Intel', url: 'https://vrmintel.com/how-brian-egan-built-evolve-into-a-profitable-short-term-rental-business-whats-next-for-vacation-rentals/' },
-            { year: 2016, properties: 2000, label: '2,000+ properties', source: 'Built In Colorado', url: 'https://www.builtincolorado.com/2016/06/15/evolve-vacation-rental-raises-5-million-funding' },
-            { year: 2018, properties: 9000, label: '9,000+ properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/evolve-vacation-rental-network-announces-80-million-in-new-funding-300701634.html', featured: true, callout: '$80M raise at 9,000 properties' },
+            { year: 2013, properties: 1000, label: '1,000+ properties', source: 'PRWeb', url: 'https://www.prweb.com/releases/2013/4/prweb10645319.htm' },
+            { year: 2018, properties: 9000, label: '9,000+ properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/evolve-vacation-rental-network-announces-80-million-in-new-funding-300701634.html', featured: true, callout: '$80M raise — profitable & growing' },
+            { year: 2019, properties: 10000, label: '10,000+ in 500 markets', source: 'Evolve', url: 'https://evolve.com/' },
             { year: 2022, properties: 19000, label: '19,000 properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/evolve-raises-100-million-to-continue-building-on-ramp-for-the-next-generation-of-vacation-rental-guests-and-owners-301481180.html' },
-            { year: 2025, properties: 35000, label: '35,000+ properties', source: 'Evolve', url: 'https://evolve.com/vacation-rentals' },
+            { year: 2025, properties: 35000, label: '35,000+ (profitable)', source: 'Evolve', url: 'https://evolve.com/vacation-rentals' },
+          ]
+        },
+        {
+          name: 'Sonder',
+          color: '#c0392b',
+          status: 'defunct',
+          funding: '$680M',
+          model: 'Master lease',
+          dataPoints: [
+            { year: 2014, properties: 500, label: 'Early growth, 11 cities', source: 'McGill Reporter', url: 'https://reporter.mcgill.ca/sonder-mcgills-first-unicorn-has-its-roots-in-dobson/' },
+            { year: 2019, properties: 5000, label: '5,000 units ($1.3B unicorn)', source: 'Tracxn', url: 'https://tracxn.com/d/companies/sonder/__Oebkg4Et5GZYls42SLYzbLaRvNIyXQxKepZuL8DRGfE/funding-and-investors' },
+            { year: 2021, properties: 16000, label: '16,000+ units, 35 cities', source: 'Sonder', url: 'https://investors.sonder.com/' },
+            { year: 2022, properties: 9700, label: '9,700 live units (IPO)', source: 'CoStar', url: 'https://www.costar.com/article/1810425994/sonders-red-flags-a-history-of-net-losses-late-reports' },
+            { year: 2023, properties: 18200, label: '18,200 peak units', source: 'Sonder', url: 'https://investors.sonder.com/', featured: true, callout: 'Peak before collapse — $680M raised' },
+            { year: 2025, properties: 0, label: 'Chapter 7 bankruptcy', source: 'Bisnow', url: 'https://www.bisnow.com/national/news/hotel/how-growth-over-operations-led-to-sonders-closure-and-chaos-131953' },
           ]
         },
         {
           name: 'AvantStay',
           color: '#8b5a2b',
+          status: 'active',
+          funding: '$750M',
+          model: 'Luxury full-service',
           dataPoints: [
             { year: 2017, properties: 50, label: 'Founded ~50 properties', source: 'Inc.com', url: 'https://www.inc.com/profile/avantstay' },
             { year: 2019, properties: 150, label: '150 properties (Series A)', source: 'PE Hub', url: 'https://www.pehub.com/hospitality-brand-avantstay-rakes-in-20-mln/' },
-            { year: 2021, properties: 1000, label: '1,000+ properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/avantstay-raises-160-million-in-capital-as-the-hospitality-platform-continues-to-lead-and-institutionalize-a-new-asset-class-for-the-industry-301445723.html', featured: true, callout: '$160M raise at 1,000+ luxury homes' },
-            { year: 2024, properties: 2300, label: '2,300+ properties', source: 'PRWeb', url: 'https://www.prweb.com/releases/avantstay-announces-opening-of-two-vacation-properties-in-nashville-302282806.html' },
+            { year: 2021, properties: 1000, label: '1,000+ luxury homes', source: 'TechCrunch', url: 'https://techcrunch.com/2021/12/15/avantstay-a-platform-for-kitting-out-and-then-renting-out-high-end-vacation-rental-homes-raises-160m/', featured: true, callout: '$160M Series B at 1,000 homes' },
+            { year: 2023, properties: 1500, label: '1,500+ in 100 destinations', source: 'AvantStay', url: 'https://avantstay.com/' },
+            { year: 2025, properties: 2300, label: '2,300+ properties', source: 'PRWeb', url: 'https://www.prweb.com/releases/avantstay-announces-opening-of-two-vacation-properties-in-nashville-302282806.html' },
           ]
         },
         {
           name: 'TurnKey',
           color: '#6b5b95',
+          status: 'acquired',
+          funding: '$120M',
+          model: 'Tech-enabled full-service',
           dataPoints: [
             { year: 2013, properties: 50, label: 'Founded in Austin', source: 'Medium', url: 'https://medium.com/authority-magazine/john-banczak-of-turnkey-vacation-rentals-the-future-of-travel-in-the-post-covid-world-5326d38ba7c' },
             { year: 2014, properties: 200, label: '~200 properties (Seed)', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/turnkey-vacation-rentals-secures-3-million-in-seed-financing-from-silverton-partners-and-industry-angels-for-market-expansion-262498411.html' },
-            { year: 2018, properties: 3500, label: '3,500 properties', source: 'Built In Austin', url: 'https://www.builtinaustin.com/articles/turneky-vacation-rentals-raises-31m-series-d', featured: true, callout: 'Built In Austin: 3,500 homes, 55 markets' },
-            { year: 2021, properties: 6000, label: '6,000 (Acquired by Vacasa)', source: 'GeekWire', url: 'https://www.geekwire.com/2021/vacasa-acquires-competitor-turnkey-bolster-vacation-rental-platform/' },
-          ]
-        },
-        {
-          name: 'Grand Welcome',
-          color: '#d4a574',
-          dataPoints: [
-            { year: 2009, properties: 10, label: 'Founded in Mammoth Lakes', source: 'Franchise Times', url: 'https://indyfranchiselaw.com/podcast/launching-your-franchise-opportunity-with-brandon-ezra-of-grand-welcome/' },
-            { year: 2019, properties: 100, label: 'Launched franchise model', source: 'Grand Welcome', url: 'https://www.grandwelcomefranchise.com/' },
-            { year: 2022, properties: 750, label: '750+ properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/grand-welcome-announces-it-has-surpassed-750-short-term-vacation-rental-properties-in-the-us-301605895.html', featured: true, callout: 'PR Newswire: 750 properties in <3 years' },
-            { year: 2024, properties: 1500, label: '1,500+ properties', source: 'The Enterprise World', url: 'https://theenterpriseworld.com/grand-welcome-future-of-travel/' },
+            { year: 2018, properties: 3500, label: '3,500 in 52 markets', source: 'Built In Austin', url: 'https://www.builtinaustin.com/articles/turneky-vacation-rentals-raises-31m-series-d', featured: true, callout: 'Industry-first noise monitoring' },
+            { year: 2019, properties: 5000, label: '5,000+ ($400M GCV)', source: 'TurnKey', url: 'https://shorttermrentalz.com/news/turnkey-vacation-rentals-funding/' },
+            { year: 2021, properties: 6000, label: '6,000 (Acquired $619M)', source: 'Skift', url: 'https://skift.com/2021/11/30/vacasa-paid-619-million-for-turnkey-vacation-rentals-in-mostly-stock/' },
           ]
         },
         {
           name: 'Blueground',
           color: '#3d85c6',
+          status: 'active',
+          funding: '$350M',
+          model: 'Mid-term (30+ days)',
           dataPoints: [
             { year: 2013, properties: 1, label: 'Founded: 1 apartment in Athens', source: 'Blueground', url: 'https://www.theblueground.com/about' },
-            { year: 2018, properties: 1000, label: '1,000+ apartments', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/leading-hospitality-tech-company-blueground-launches-in-united-states-with-plan-to-transform-countrys-property-rental-market-300679548.html' },
-            { year: 2019, properties: 2800, label: '2,800+ apartments', source: 'Crunchbase News', url: 'https://news.crunchbase.com/startups/flexible-apartment-rental-startup-blueground-raises-50m-series-b/' },
-            { year: 2021, properties: 5000, label: '5,000 apartments', source: 'Blueground', url: 'https://www.theblueground.com/blog/hear-our-news/series-c-funding/', featured: true, callout: '$180M Series C at 5,000 apartments' },
-            { year: 2024, properties: 15000, label: '15,000+ apartments', source: 'Business Travel News', url: 'https://www.businesstravelnews.com/Lodging/Blueground-Raises-45M-in-Funding-Round' },
+            { year: 2018, properties: 1500, label: '1,500 apartments (Series A)', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/leading-hospitality-tech-company-blueground-launches-in-united-states-with-plan-to-transform-countrys-property-rental-market-300679548.html' },
+            { year: 2019, properties: 3000, label: '3,000 in 10 cities', source: 'Crunchbase News', url: 'https://news.crunchbase.com/startups/flexible-apartment-rental-startup-blueground-raises-50m-series-b/' },
+            { year: 2021, properties: 5000, label: '5,000 (92% pandemic occupancy)', source: 'Blueground', url: 'https://www.theblueground.com/blog/hear-our-news/series-c-funding/', featured: true, callout: '$140M Series C — unicorn path' },
+            { year: 2023, properties: 12000, label: '12,000 in 29 cities', source: 'Blueground', url: 'https://www.theblueground.com/blog/hear-our-news/blueground-series-d/' },
+            { year: 2025, properties: 20000, label: '20,000+ ($1B+ valuation)', source: 'Business Travel News', url: 'https://www.businesstravelnews.com/Lodging/Blueground-Raises-45M-in-Funding-Round' },
+          ]
+        },
+        {
+          name: 'Grand Welcome',
+          color: '#d4a574',
+          status: 'active',
+          funding: 'Bootstrapped',
+          model: 'Franchise',
+          dataPoints: [
+            { year: 2009, properties: 10, label: 'Founded in Mammoth Lakes', source: 'Indy Franchise Law', url: 'https://indyfranchiselaw.com/podcast/launching-your-franchise-opportunity-with-brandon-ezra-of-grand-welcome/' },
+            { year: 2019, properties: 100, label: 'Launched franchise model', source: 'Grand Welcome', url: 'https://www.grandwelcomefranchise.com/' },
+            { year: 2022, properties: 750, label: '750+ properties', source: 'PR Newswire', url: 'https://www.prnewswire.com/news-releases/grand-welcome-announces-it-has-surpassed-750-short-term-vacation-rental-properties-in-the-us-301605895.html', featured: true, callout: '750 properties in <3 years franchising' },
+            { year: 2025, properties: 1500, label: '1,500+ in 20 states', source: 'The Enterprise World', url: 'https://theenterpriseworld.com/grand-welcome-future-of-travel/' },
           ]
         },
       ];
@@ -302,14 +355,21 @@
       // Scale functions
       const minYear = 2008;
       const maxYear = 2026;
-      const maxProperties = 40000;
+      const maxProperties = 50000;
 
       const xScale = (year) => padding.left + ((year - minYear) / (maxYear - minYear)) * chartWidth;
       const yScale = (properties) => padding.top + chartHeight - (properties / maxProperties) * chartHeight;
 
       // Generate year labels
       const years = [2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025];
-      const propertyLabels = [0, 10000, 20000, 30000, 40000];
+      const propertyLabels = [0, 10000, 20000, 30000, 40000, 50000];
+
+      // Status colors and labels
+      const statusConfig = {
+        active: { label: 'Active', color: '#22c55e' },
+        acquired: { label: 'Acquired', color: '#f59e0b' },
+        defunct: { label: 'Defunct', color: '#ef4444' }
+      };
 
       const styles = {
         container: {
@@ -372,7 +432,8 @@
           border: '1px solid #eee',
           display: 'flex',
           flexDirection: 'column',
-          position: 'relative'
+          position: 'relative',
+          overflow: 'visible'
         },
         sourcesSection: {
           flex: '1',
@@ -543,7 +604,15 @@
 
                     return (
                       <g key={company.name} opacity={isActive ? 1 : 0.15} style={{ transition: 'opacity 0.3s' }}>
-                        <polyline points={points} fill="none" stroke={company.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <polyline
+                          points={points}
+                          fill="none"
+                          stroke={company.color}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeDasharray={company.status === 'defunct' ? '8,4' : 'none'}
+                        />
                         {sortedPoints.map((point, i) => (
                           <g key={i}>
                             <circle 
@@ -553,15 +622,23 @@
                               onClick={() => handlePointClick(company.name, point)} 
                               style={{ cursor: 'pointer' }} 
                             />
-                            <circle cx={xScale(point.year)} cy={yScale(point.properties)} r={point.featured ? 7 : 5} fill={company.color} stroke="#fff" strokeWidth="2" pointerEvents="none" />
+                            {/* Special X marker for bankruptcy endpoints */}
+                            {company.status === 'defunct' && point.properties === 0 ? (
+                              <g pointerEvents="none">
+                                <circle cx={xScale(point.year)} cy={yScale(point.properties)} r="8" fill="#ef4444" stroke="#fff" strokeWidth="2" />
+                                <text x={xScale(point.year)} y={yScale(point.properties) + 1} textAnchor="middle" dominantBaseline="middle" fontSize="10" fill="#fff" fontWeight="bold">✕</text>
+                              </g>
+                            ) : (
+                              <circle cx={xScale(point.year)} cy={yScale(point.properties)} r={point.featured ? 7 : 5} fill={company.color} stroke="#fff" strokeWidth="2" pointerEvents="none" />
+                            )}
                           </g>
                         ))}
                         {featuredPoint && (
                           <g opacity={isActive ? 1 : 0.25}>
                             <line x1={xScale(featuredPoint.year)} y1={yScale(featuredPoint.properties)} x2={xScale(featuredPoint.year) + lineEndOffset.x} y2={yScale(featuredPoint.properties) + lineEndOffset.y} stroke={company.color} strokeWidth="1" opacity="0.35" />
-                            <text 
-                              x={xScale(featuredPoint.year) + textOffset.x} y={yScale(featuredPoint.properties) + textOffset.y} 
-                              textAnchor="start" fontSize="9" fill="#666" fontFamily="Inter" fontWeight="400" 
+                            <text
+                              x={xScale(featuredPoint.year) + textOffset.x} y={yScale(featuredPoint.properties) + textOffset.y}
+                              textAnchor="start" fontSize="9" fill="#666" fontFamily="Inter" fontWeight="400"
                               onClick={() => handlePointClick(company.name, featuredPoint)}
                               style={{ cursor: 'pointer' }}
                             >
@@ -589,8 +666,30 @@
                     onMouseEnter={() => setActiveCompany(company.name)}
                     onMouseLeave={() => setActiveCompany(null)}
                   >
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: company.color }} />
-                    <span style={{ color: '#333', fontWeight: '500' }}>{company.name}</span>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: company.color,
+                      border: company.status === 'defunct' ? '2px solid #ef4444' : 'none',
+                      boxSizing: 'border-box'
+                    }} />
+                    <span style={{
+                      color: '#333',
+                      fontWeight: '500',
+                      textDecoration: company.status === 'defunct' ? 'line-through' : 'none'
+                    }}>{company.name}</span>
+                    {company.status !== 'active' && (
+                      <span style={{
+                        fontSize: '8px',
+                        padding: '1px 4px',
+                        borderRadius: '3px',
+                        backgroundColor: statusConfig[company.status].color,
+                        color: '#fff',
+                        fontWeight: '600',
+                        marginLeft: '2px'
+                      }}>{statusConfig[company.status].label.toUpperCase()}</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -609,8 +708,27 @@
                     transition: 'opacity 0.3s'
                   }}>
                     <div style={styles.companyHeader}>
-                      <div style={{ ...styles.companyDot, backgroundColor: company.color }} />
-                      <span style={styles.companyName}>{company.name}</span>
+                      <div style={{
+                        ...styles.companyDot,
+                        backgroundColor: company.color,
+                        border: company.status === 'defunct' ? '2px solid #ef4444' : 'none',
+                        boxSizing: 'border-box'
+                      }} />
+                      <span style={{
+                        ...styles.companyName,
+                        textDecoration: company.status === 'defunct' ? 'line-through' : 'none'
+                      }}>{company.name}</span>
+                      {company.status !== 'active' && (
+                        <span style={{
+                          fontSize: '8px',
+                          padding: '1px 4px',
+                          borderRadius: '3px',
+                          backgroundColor: statusConfig[company.status].color,
+                          color: '#fff',
+                          fontWeight: '600'
+                        }}>{statusConfig[company.status].label.toUpperCase()}</span>
+                      )}
+                      <span style={{ fontSize: '9px', color: '#999', marginLeft: 'auto' }}>{company.funding}</span>
                     </div>
                     {company.dataPoints.map((point, i) => (
                       <div
@@ -636,7 +754,7 @@
 
           {/* Footer */}
           <div style={styles.footer}>
-            <em>Note: Only publicly documented milestones with verifiable sources are shown. Lines connect data points but do not represent interpolated growth.</em>
+            <em>Note: Master lease models (fixed rent obligations) proved fatal — every major company using them failed. Asset-light management agreements survived. Only publicly documented milestones shown.</em>
           </div>
         </div>
       );
