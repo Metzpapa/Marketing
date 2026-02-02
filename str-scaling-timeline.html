@@ -201,8 +201,38 @@
 
     // --- Main Application ---
     const PMGrowthTimeline = () => {
-      const [activeCompany, setActiveCompany] = useState(null);
+      const [selectedCompanies, setSelectedCompanies] = useState(new Set());
+      const [hoveredCompany, setHoveredCompany] = useState(null);
       const sourcesContainerRef = useRef(null);
+
+      // Toggle a company's locked selection state
+      const toggleSelection = (companyName) => {
+        setSelectedCompanies(prev => {
+          const next = new Set(prev);
+          if (next.has(companyName)) {
+            next.delete(companyName);
+          } else {
+            next.add(companyName);
+          }
+          return next;
+        });
+      };
+
+      // Calculate opacity based on selection and hover state
+      const getOpacity = (companyName) => {
+        const hasSelections = selectedCompanies.size > 0;
+        const isSelected = selectedCompanies.has(companyName);
+        const isHovered = hoveredCompany === companyName;
+
+        if (!hasSelections) {
+          // No locks - hover controls visibility
+          return (hoveredCompany === null || isHovered) ? 1 : 0.15;
+        } else {
+          // Has locks - selected items visible, hover can highlight others
+          if (isSelected || isHovered) return 1;
+          return 0.15;
+        }
+      };
 
       // Text positions for featured callouts
       const calloutPositions = {
@@ -540,18 +570,18 @@
       };
 
       const handlePointClick = (companyName, point) => {
-        setActiveCompany(companyName);
+        toggleSelection(companyName);
         const sourceId = `source-${companyName.replace(/\s+/g, '-')}-${point.year}`;
         const element = document.getElementById(sourceId);
-        
+
         if (element && sourcesContainerRef.current) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          
+
           // Flash effect
           element.style.borderColor = companies.find(c => c.name === companyName).color;
           element.style.backgroundColor = '#fff';
           element.style.boxShadow = '0 0 0 2px ' + companies.find(c => c.name === companyName).color + '20';
-          
+
           setTimeout(() => {
             element.style.borderColor = '#eee';
             element.style.backgroundColor = '#fafafa';
@@ -597,13 +627,13 @@
                   {companies.map((company) => {
                     const sortedPoints = [...company.dataPoints].sort((a, b) => a.year - b.year);
                     const points = sortedPoints.map(d => `${xScale(d.year)},${yScale(d.properties)}`).join(' ');
-                    const isActive = activeCompany === company.name || activeCompany === null;
+                    const opacity = getOpacity(company.name);
                     const featuredPoint = sortedPoints.find(p => p.featured);
                     const textOffset = calloutPositions[company.name] || { x: 50, y: -30 };
                     const lineEndOffset = lineEndpoints[company.name] || { x: 20, y: -20 };
 
                     return (
-                      <g key={company.name} opacity={isActive ? 1 : 0.15} style={{ transition: 'opacity 0.3s' }}>
+                      <g key={company.name} opacity={opacity} style={{ transition: 'opacity 0.3s' }}>
                         <polyline
                           points={points}
                           fill="none"
@@ -615,12 +645,12 @@
                         />
                         {sortedPoints.map((point, i) => (
                           <g key={i}>
-                            <circle 
-                              cx={xScale(point.year)} cy={yScale(point.properties)} r="12" fill="transparent" 
-                              onMouseEnter={() => setActiveCompany(company.name)} 
-                              onMouseLeave={() => setActiveCompany(null)} 
-                              onClick={() => handlePointClick(company.name, point)} 
-                              style={{ cursor: 'pointer' }} 
+                            <circle
+                              cx={xScale(point.year)} cy={yScale(point.properties)} r="12" fill="transparent"
+                              onMouseEnter={() => setHoveredCompany(company.name)}
+                              onMouseLeave={() => setHoveredCompany(null)}
+                              onClick={() => handlePointClick(company.name, point)}
+                              style={{ cursor: 'pointer' }}
                             />
                             {/* Special X marker for bankruptcy endpoints */}
                             {company.status === 'defunct' && point.properties === 0 ? (
@@ -634,7 +664,7 @@
                           </g>
                         ))}
                         {featuredPoint && (
-                          <g opacity={isActive ? 1 : 0.25}>
+                          <g opacity={opacity > 0.5 ? 1 : 0.25}>
                             <line x1={xScale(featuredPoint.year)} y1={yScale(featuredPoint.properties)} x2={xScale(featuredPoint.year) + lineEndOffset.x} y2={yScale(featuredPoint.properties) + lineEndOffset.y} stroke={company.color} strokeWidth="1" opacity="0.35" />
                             <text
                               x={xScale(featuredPoint.year) + textOffset.x} y={yScale(featuredPoint.properties) + textOffset.y}
@@ -655,43 +685,57 @@
               
               {/* Legend */}
               <div style={styles.legend}>
-                {companies.map((company) => (
-                  <div
-                    key={company.name}
-                    style={{
-                      ...styles.legendItem,
-                      opacity: activeCompany === company.name || activeCompany === null ? 1 : 0.3,
-                      backgroundColor: activeCompany === company.name ? '#f5f5f5' : 'transparent'
-                    }}
-                    onMouseEnter={() => setActiveCompany(company.name)}
-                    onMouseLeave={() => setActiveCompany(null)}
-                  >
-                    <div style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      backgroundColor: company.color,
-                      border: company.status === 'defunct' ? '2px solid #ef4444' : 'none',
-                      boxSizing: 'border-box'
-                    }} />
-                    <span style={{
-                      color: '#333',
-                      fontWeight: '500',
-                      textDecoration: company.status === 'defunct' ? 'line-through' : 'none'
-                    }}>{company.name}</span>
-                    {company.status !== 'active' && (
+                {companies.map((company) => {
+                  const isSelected = selectedCompanies.has(company.name);
+                  const opacity = getOpacity(company.name);
+                  return (
+                    <div
+                      key={company.name}
+                      style={{
+                        ...styles.legendItem,
+                        opacity: opacity > 0.5 ? 1 : 0.3,
+                        backgroundColor: isSelected ? '#f0f0f0' : (hoveredCompany === company.name ? '#f5f5f5' : 'transparent'),
+                        border: isSelected ? '1px solid #ccc' : '1px solid transparent',
+                        borderRadius: '4px'
+                      }}
+                      onMouseEnter={() => setHoveredCompany(company.name)}
+                      onMouseLeave={() => setHoveredCompany(null)}
+                      onClick={() => toggleSelection(company.name)}
+                    >
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: company.color,
+                        border: company.status === 'defunct' ? '2px solid #ef4444' : 'none',
+                        boxSizing: 'border-box'
+                      }} />
                       <span style={{
-                        fontSize: '8px',
-                        padding: '1px 4px',
-                        borderRadius: '3px',
-                        backgroundColor: statusConfig[company.status].color,
-                        color: '#fff',
-                        fontWeight: '600',
-                        marginLeft: '2px'
-                      }}>{statusConfig[company.status].label.toUpperCase()}</span>
-                    )}
-                  </div>
-                ))}
+                        color: '#333',
+                        fontWeight: '500',
+                        textDecoration: company.status === 'defunct' ? 'line-through' : 'none'
+                      }}>{company.name}</span>
+                      {company.status !== 'active' && (
+                        <span style={{
+                          fontSize: '8px',
+                          padding: '1px 4px',
+                          borderRadius: '3px',
+                          backgroundColor: statusConfig[company.status].color,
+                          color: '#fff',
+                          fontWeight: '600',
+                          marginLeft: '2px'
+                        }}>{statusConfig[company.status].label.toUpperCase()}</span>
+                      )}
+                      {isSelected && (
+                        <span style={{
+                          fontSize: '10px',
+                          color: '#666',
+                          marginLeft: '2px'
+                        }}>✓</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -701,10 +745,12 @@
                 <h3 style={styles.sourcesTitle}>DATA SOURCES</h3>
               </div>
               <div style={styles.sourcesList} className="source-scroll" ref={sourcesContainerRef}>
-                {companies.map((company) => (
+                {companies.map((company) => {
+                  const opacity = getOpacity(company.name);
+                  return (
                   <div key={company.name} style={{
                     ...styles.companyGroup,
-                    opacity: activeCompany === company.name || activeCompany === null ? 1 : 0.3,
+                    opacity: opacity > 0.5 ? 1 : 0.3,
                     transition: 'opacity 0.3s'
                   }}>
                     <div style={styles.companyHeader}>
@@ -747,7 +793,8 @@
                       </div>
                     ))}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
